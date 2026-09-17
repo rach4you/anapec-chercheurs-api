@@ -15,11 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Initial Web Services are seeded idempotently. No production users
+        // are created here; the first ADMIN is created via the CLI
+        // (`php artisan app:create-api-user`).
+        $this->call(WebServiceSeeder::class);
     }
 }
