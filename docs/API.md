@@ -1,4 +1,4 @@
-# ANAPEC Chercheurs API - Phase 1 & 2
+# ANAPEC Chercheurs API - Phase 1, 2 & 3
 
 ## Architecture
 
@@ -325,6 +325,50 @@ php artisan test
 
 Tests run against the live Oracle database using `DatabaseTransactions`.
 
+## Web Service Consumption (Phase 3)
+
+### Check CIN Existence
+
+```
+POST /api/v1/services/check-cin
+Authorization: Bearer {token}
+```
+
+Requires: WS_CHECK_CIN permission enabled + WS_CHECK_CIN globally active + user active.
+
+Request:
+```json
+{
+  "cin": "EA154824"
+}
+```
+
+Response (200, exists):
+```json
+{
+  "success": true,
+  "message": "CIN check completed.",
+  "data": {
+    "exists": true
+  }
+}
+```
+
+Response (200, not found):
+```json
+{
+  "success": true,
+  "message": "CIN check completed.",
+  "data": {
+    "exists": false
+  }
+}
+```
+
+Rate limit: 60 requests/minute.
+
+See `docs/services/WS_CHECK_CIN.md` for full details.
+
 ## Next Phase
 
-- Web service consumption endpoints (CV, Profile, CIN, Bilan)
+- Web service consumption endpoints (Profile, CV, Bilan)

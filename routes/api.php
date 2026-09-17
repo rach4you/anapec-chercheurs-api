@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Services\CheckCinController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebServiceController;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::patch('user/password', [UserController::class, 'updatePassword']);
+
+        Route::middleware(['ws:WS_CHECK_CIN', 'throttle:60,1'])
+            ->post('services/check-cin', [CheckCinController::class, 'check']);
 
         Route::middleware(['can:admin'])->prefix('admin')->group(function (): void {
             Route::get('users', [AdminUserController::class, 'index']);
