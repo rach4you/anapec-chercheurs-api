@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('web-services', [WebServiceController::class, 'index']);
             Route::get('web-services/{code}', [WebServiceController::class, 'show']);
+            Route::patch('web-services/{code}/status', [WebServiceController::class, 'toggleStatus']);
         });
     });
 });

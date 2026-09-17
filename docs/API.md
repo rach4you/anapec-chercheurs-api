@@ -1,4 +1,4 @@
-# ANAPEC Chercheurs API - Phase 1
+# ANAPEC Chercheurs API - Phase 1 & 2
 
 ## Architecture
 
@@ -179,6 +179,23 @@ Request:
 GET /api/v1/admin/users/{id}/web-services
 ```
 
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Web Services retrieved.",
+  "data": [
+    {
+      "code": "WS_CV",
+      "name": "CV",
+      "global_is_active": true,
+      "is_enabled": true,
+      "effective_access": true
+    }
+  ]
+}
+```
+
 ### Assign User Web Services
 
 ```
@@ -195,10 +212,31 @@ Request:
 }
 ```
 
+## Web Service Management (Phase 2)
+
 ### List Web Services
 
 ```
 GET /api/v1/admin/web-services
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Web Services retrieved.",
+  "data": [
+    {
+      "id": 1,
+      "code": "WS_CHECK_CIN",
+      "name": "Check CIN",
+      "description": "Verify a CIN number",
+      "is_active": true,
+      "created_at": "...",
+      "updated_at": "..."
+    }
+  ]
+}
 ```
 
 ### Show Web Service
@@ -206,6 +244,37 @@ GET /api/v1/admin/web-services
 ```
 GET /api/v1/admin/web-services/{code}
 ```
+
+### Toggle Web Service Status (Global ON/OFF)
+
+```
+PATCH /api/v1/admin/web-services/{code}/status
+```
+
+Request:
+```json
+{
+  "is_active": false
+}
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Web Service status updated successfully.",
+  "data": {
+    "code": "WS_CV",
+    "is_active": false
+  }
+}
+```
+
+When a Web Service is globally disabled, ALL users receive HTTP 403 when
+attempting to consume it, even if their individual permission is still enabled.
+User permission records are NOT deleted or modified when the global status
+changes. Re-enabling the service restores access for users whose permission
+remains enabled.
 
 ## Web Service Permission Check
 
@@ -259,4 +328,3 @@ Tests run against the live Oracle database using `DatabaseTransactions`.
 ## Next Phase
 
 - Web service consumption endpoints (CV, Profile, CIN, Bilan)
-- ON/OFF toggle for web services at runtime

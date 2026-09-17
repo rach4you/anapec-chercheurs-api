@@ -128,7 +128,9 @@ class AdminUserController extends ApiJsonController
                 return [
                     'code' => $row->webService->code,
                     'name' => $row->webService->name,
+                    'global_is_active' => $row->webService->is_active,
                     'is_enabled' => $row->is_enabled,
+                    'effective_access' => $row->webService->is_active && $row->is_enabled,
                 ];
             });
 
