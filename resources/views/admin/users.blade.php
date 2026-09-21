@@ -3,6 +3,7 @@
 @section('title', 'Utilisateurs')
 
 @section('content')
+<div id="admin-users-root" class="hidden">
 <div class="flex items-center justify-between gap-4">
     <div>
         <h2 class="text-lg font-semibold text-gray-900">Utilisateurs</h2>
@@ -17,6 +18,14 @@
         </svg>
         Nouvel utilisateur
     </button>
+</div>
+
+{{-- ── AUTHORIZATION LOADING STATE ── --}}
+<div id="auth-loading" class="mt-6 flex items-center justify-center rounded-lg border border-gray-200 bg-white p-10 shadow-sm">
+    <span class="inline-flex items-center gap-2 text-sm font-medium text-gray-500">
+        <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-anapec-600"></span>
+        Vérification des accès...
+    </span>
 </div>
 
 {{-- ── ACCESS DENIED (403 / non-admin) ── --}}
@@ -202,6 +211,7 @@
         </form>
     </div>
 </div>
+</div>
 
 <script>
 (function () {
@@ -247,6 +257,14 @@
     var tableEl = document.getElementById('users-table');
     var loadError = document.getElementById('load-error');
     var accessDenied = document.getElementById('access-denied');
+    var authLoading = document.getElementById('auth-loading');
+    var rootEl = document.getElementById('admin-users-root');
+
+    function showAdminRoot() {
+        authLoading.classList.add('hidden');
+        accessDenied.classList.add('hidden');
+        rootEl.classList.remove('hidden');
+    }
 
     function showSkeleton() {
         skeleton.classList.remove('hidden');
@@ -356,21 +374,33 @@
                 window.location.href = '/login';
                 return;
             }
-            if (!res.ok) return res.json().then(function (d) { showLoadError(); });
+            if (!res.ok) {
+                authLoading.classList.add('hidden');
+                return res.json().then(function (d) { showLoadError(); });
+            }
             return res.json().then(function (data) {
-                if (!data.success || !data.data) { showLoadError(); return; }
+                if (!data.success || !data.data) {
+                    authLoading.classList.add('hidden');
+                    showLoadError();
+                    return;
+                }
                 var user = data.data;
                 localStorage.setItem('anapec_user', JSON.stringify(user));
 
                 if (user.role !== 'admin') {
-                    // Non-admin: do NOT call the admin users endpoint.
+                    // Non-admin: do NOT initialize the admin UI, do NOT call
+                    // the admin users endpoint, and do NOT log the user out.
+                    authLoading.classList.add('hidden');
                     showAccessDenied();
+                    setTimeout(function () { window.location.replace('/dashboard'); }, 1200);
                     return;
                 }
+                showAdminRoot();
                 loadUsers();
             });
         })
         .catch(function () {
+            authLoading.classList.add('hidden');
             showLoadError();
         });
 

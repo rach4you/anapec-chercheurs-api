@@ -3,6 +3,7 @@
 @section('title', 'Détails utilisateur')
 
 @section('content')
+<div id="admin-user-show-root" class="hidden">
 <div class="flex items-center justify-between gap-4">
     <div>
         <h2 class="text-lg font-semibold text-gray-900">Détails utilisateur</h2>
@@ -260,6 +261,15 @@
         </div>
     </div>
 </div>
+</div>
+
+{{-- ── AUTHORIZATION LOADING STATE ── --}}
+<div id="auth-loading" class="mt-6 flex items-center justify-center rounded-lg border border-gray-200 bg-white p-10 shadow-sm">
+    <span class="inline-flex items-center gap-2 text-sm font-medium text-gray-500">
+        <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-anapec-600"></span>
+        Vérification des accès...
+    </span>
+</div>
 
 <script>
 (function () {
@@ -331,6 +341,9 @@
     var currentUser = null;
 
     // ── Auth gate ──
+    var rootEl = document.getElementById('admin-user-show-root');
+    var authLoading = document.getElementById('auth-loading');
+
     get('/api/v1/auth/me')
         .then(function (res) {
             if (res.status === 401) {
@@ -339,18 +352,34 @@
                 window.location.href = '/login';
                 return;
             }
-            if (!res.ok) return res.json().then(function () { showLoadError(); });
+            if (!res.ok) {
+                authLoading.classList.add('hidden');
+                return res.json().then(function () { showLoadError(); });
+            }
             return res.json().then(function (data) {
-                if (!data.success || !data.data) { showLoadError(); return; }
-                var me = data.data;
-                if (me.role !== 'admin') {
-                    showAccessDenied();
+                if (!data.success || !data.data) {
+                    authLoading.classList.add('hidden');
+                    showLoadError();
                     return;
                 }
+                var me = data.data;
+                localStorage.setItem('anapec_user', JSON.stringify(me));
+                if (me.role !== 'admin') {
+                    // Non-admin: do NOT load admin data, do NOT log out.
+                    authLoading.classList.add('hidden');
+                    showAccessDenied();
+                    setTimeout(function () { window.location.replace('/dashboard'); }, 1200);
+                    return;
+                }
+                authLoading.classList.add('hidden');
+                rootEl.classList.remove('hidden');
                 loadUser();
             });
         })
-        .catch(function () { showLoadError(); });
+        .catch(function () {
+            authLoading.classList.add('hidden');
+            showLoadError();
+        });
 
     function showAccessDenied() {
         document.getElementById('access-denied').classList.remove('hidden');

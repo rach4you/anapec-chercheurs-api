@@ -44,10 +44,10 @@
                 <span>Dashboard</span>
             </a>
 
-            <a href="{{ route('admin.users') }}" data-nav="users"
-               class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                      text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
-                      data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
+            <a href="{{ route('admin.users') }}" data-nav="users" data-admin-only
+                class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
+                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
                 <svg class="h-5 w-5 shrink-0 text-gray-400 group-hover:text-anapec-600 data-[active=true]:text-anapec-600"
                      viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path d="M10 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4 10a6 6 0 1 1 12 0"/>
@@ -56,7 +56,7 @@
                 <span>Utilisateurs</span>
             </a>
 
-            <a href="#" data-nav="web-services"
+            <a href="#" data-nav="web-services" data-admin-only
                class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
@@ -134,7 +134,7 @@
                 <span>Dashboard</span>
             </a>
 
-            <a href="{{ route('admin.users') }}" data-mobile-nav="users"
+            <a href="{{ route('admin.users') }}" data-mobile-nav="users" data-admin-only
                class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
@@ -146,7 +146,7 @@
                 <span>Utilisateurs</span>
             </a>
 
-            <a href="#" data-mobile-nav="web-services"
+            <a href="#" data-mobile-nav="web-services" data-admin-only
                class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
@@ -261,6 +261,12 @@
             avatarEl.textContent = initials;
         }
     }
+
+    // Hide admin-only navigation items for non-admin users
+    var isAdmin = !!(user && user.role === 'admin');
+    document.querySelectorAll('[data-admin-only]').forEach(function (el) {
+        if (!isAdmin) el.style.display = 'none';
+    });
 
     // Highlight active nav item
     var path = window.location.pathname;
