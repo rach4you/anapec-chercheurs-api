@@ -372,3 +372,44 @@ See `docs/services/WS_CHECK_CIN.md` for full details.
 ## Next Phase
 
 - Web service consumption endpoints (Profile, CV, Bilan)
+
+## Swagger / OpenAPI
+
+Swagger UI is available at:
+
+| URL | Description |
+|-----|-------------|
+| `http://127.0.0.1:8000/api/documentation` | Swagger UI |
+| `http://127.0.0.1:8000/api/documentation/openapi` | OpenAPI JSON spec |
+
+### Usage
+
+1. Start Laravel:
+   ```bash
+   php artisan serve
+   ```
+
+2. Open Swagger UI in your browser:
+   ```
+   http://127.0.0.1:8000/api/documentation
+   ```
+
+3. **Authenticate**:
+   - Click the **Authorize** button (top-right)
+   - Enter your Sanctum Bearer token (from `POST /api/v1/auth/login`)
+
+4. **Test WS_CHECK_CIN**:
+   - Navigate to `POST /services/check-cin`
+   - Click **Try it out**
+   - Enter a CIN in the request body:
+     ```json
+     { "cin": "EA154824" }
+     ```
+   - Click **Execute**
+   - Inspect the response (`exists: true` or `exists: false`)
+
+### OpenAPI Spec
+
+The spec is maintained at `storage/openapi/openapi.yaml`.
+Served as JSON at `/api/documentation/openapi` (no conversion at runtime —
+the YAML is parsed with Symfony Yaml and returned as JSON).

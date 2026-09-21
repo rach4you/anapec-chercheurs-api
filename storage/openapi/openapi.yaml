@@ -1,0 +1,752 @@
+openapi: 3.0.3
+info:
+  title: ANAPEC Chercheurs API
+  version: 1.0.0
+  description: API sécurisée pour la gestion et l'exposition des Web Services ANAPEC Chercheurs.
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: Login, logout, and current user
+  - name: Admin - Users
+    description: Admin user management
+  - name: Admin - Web Services
+    description: Admin web service management
+  - name: Services
+    description: Web service consumption endpoints
+
+paths:
+  # ── AUTH ──
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate and obtain a Sanctum token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email
+                password:
+                  type: string
+                  format: password
+                  description: User password (min 8 chars)
+      responses:
+        '200':
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Authenticated." }
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                        description: Sanctum Bearer token
+                      token_type:
+                        type: string
+                        example: Bearer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Account deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: Account is deactivated.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke the current Sanctum token
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Logged out." }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get the currently authenticated user
+      responses:
+        '200':
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Authenticated user." }
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── ADMIN USERS ──
+  /admin/users:
+    get:
+      tags: [Admin - Users]
+      summary: List all API users
+      responses:
+        '200':
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Users retrieved." }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin - Users]
+      summary: Create an API user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "User created." }
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: User ID
+    get:
+      tags: [Admin - Users]
+      summary: Get a single user
+      responses:
+        '200':
+          description: User retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "User retrieved." }
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Admin - Users]
+      summary: Update a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUser'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "User updated." }
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/users/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    patch:
+      tags: [Admin - Users]
+      summary: Toggle user active/inactive status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "User status updated." }
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/users/{id}/password:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      tags: [Admin - Users]
+      summary: Reset a user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "User password has been reset." }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/users/{id}/web-services:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    get:
+      tags: [Admin - Users]
+      summary: List Web Services assigned to a user
+      responses:
+        '200':
+          description: Web Services for user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Services retrieved." }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserWebServicePermission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Admin - Users]
+      summary: Assign/replace Web Services for a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignWebServices'
+      responses:
+        '200':
+          description: Web Services assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Services assigned." }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ── ADMIN WEB SERVICES ──
+  /admin/web-services:
+    get:
+      tags: [Admin - Web Services]
+      summary: List all Web Services
+      responses:
+        '200':
+          description: Web Services list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Services retrieved." }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebService'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/web-services/{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          example: WS_CHECK_CIN
+        description: Web Service code
+    get:
+      tags: [Admin - Web Services]
+      summary: Get a Web Service by code
+      responses:
+        '200':
+          description: Web Service retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Service retrieved." }
+                  data:
+                    $ref: '#/components/schemas/WebService'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/web-services/{code}/status:
+    parameters:
+      - $ref: '#/components/parameters/WebServiceCode'
+    patch:
+      tags: [Admin - Web Services]
+      summary: Toggle global Web Service status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Web Service status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Service status updated successfully." }
+                  data:
+                    type: object
+                    properties:
+                      code: { type: string, example: WS_CV }
+                      is_active: { type: boolean, example: false }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ── SERVICES ──
+  /services/check-cin:
+    post:
+      tags: [Services]
+      summary: Check if a researcher exists by CIN
+      description: |
+        Protected by:
+        - `auth:api` (Sanctum)
+        - `ws:WS_CHECK_CIN` (permission middleware)
+        - `throttle:60,1` (rate limit: 60 requests/minute)
+
+        Global access rule: the user must have WS_CHECK_CIN enabled in
+        `api_user_web_services` AND the global `api_web_services.is_active`
+        must be `true`. Otherwise returns 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cin]
+              properties:
+                cin:
+                  type: string
+                  maxLength: 15
+                  example: "EA154824"
+                  description: Carte d'Identité Nationale number
+      responses:
+        '200':
+          description: CIN check completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "CIN check completed." }
+                  data:
+                    type: object
+                    properties:
+                      exists:
+                        type: boolean
+                        description: Whether the CIN was found in SIGEC
+              examples:
+                exists:
+                  value:
+                    success: true
+                    message: "CIN check completed."
+                    data:
+                      exists: true
+                notFound:
+                  value:
+                    success: true
+                    message: "CIN check completed."
+                    data:
+                      exists: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            Forbidden when:
+            - WS_CHECK_CIN permission not assigned or disabled for the user
+            - WS_CHECK_CIN globally disabled
+            - User is inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+      description: |
+        Enter your Sanctum Bearer token.
+        Obtain a token by calling `POST /auth/login` with valid credentials.
+
+  parameters:
+    UserID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: User ID
+
+    WebServiceCode:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Web Service code
+
+  responses:
+    Unauthorized:
+      description: Unauthenticated or inactive user
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: Unauthenticated.
+
+    Forbidden:
+      description: Authenticated but not authorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: Insufficient permissions.
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: Not found.
+
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+          example:
+            success: false
+            message: The cin field is required.
+            errors:
+              cin:
+                - The cin field is required.
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Admin User"
+        email:
+          type: string
+          format: email
+          example: "admin@example.com"
+        role:
+          type: string
+          enum: [admin, user]
+          example: admin
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    WebService:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: WS_CHECK_CIN
+        name:
+          type: string
+          example: "Check CIN"
+        description:
+          type: string
+          nullable: true
+          example: "Verify a CIN number"
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    UserWebServicePermission:
+      type: object
+      properties:
+        code:
+          type: string
+          example: WS_CV
+        name:
+          type: string
+          example: "CV"
+        global_is_active:
+          type: boolean
+          example: true
+        is_enabled:
+          type: boolean
+          example: true
+        effective_access:
+          type: boolean
+          description: global_is_active AND is_enabled
+          example: true
+
+    CreateUser:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "New User"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, user]
+          description: Defaults to "user"
+        is_active:
+          type: boolean
+          description: Defaults to true
+
+    UpdateUser:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, user]
+
+    AssignWebServices:
+      type: object
+      required: [web_services]
+      properties:
+        web_services:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [code]
+            properties:
+              code:
+                type: string
+                maxLength: 60
+                description: Web Service code (must exist and be active)
+                example: WS_CHECK_CIN
+              enabled:
+                type: boolean
+                description: Defaults to true
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string

@@ -1,11 +1,16 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Api\DocumentationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Services\CheckCinController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebServiceController;
 use Illuminate\Support\Facades\Route;
+
+// ── Swagger / OpenAPI Documentation (public) ──
+Route::get('documentation', [DocumentationController::class, 'ui']);
+Route::get('documentation/openapi', [DocumentationController::class, 'openapi']);
 
 Route::prefix('v1')->group(function (): void {
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');

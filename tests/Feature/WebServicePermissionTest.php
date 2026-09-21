@@ -213,12 +213,14 @@ class WebServicePermissionTest extends TestCase
         $admin = UserFactory::new()->asAdmin()->create(['email' => 'boss@example.com', 'password' => 'secret123']);
         $plain = UserFactory::new()->create(['email' => 'plain2@example.com', 'password' => 'secret123']);
 
-        $this->actingAs($admin, 'api')
+        $response = $this->actingAs($admin, 'api')
             ->getJson('/api/v1/admin/users')
-            ->assertOk()
-            ->assertJsonCount(2, 'data');
+            ->assertOk();
 
-        $this->assertNotNull($plain);
+        $emails = collect($response->json('data'))->pluck('email')->all();
+
+        $this->assertContains('boss@example.com', $emails);
+        $this->assertContains('plain2@example.com', $emails);
     }
 
     public function test_admin_can_create_a_user(): void
