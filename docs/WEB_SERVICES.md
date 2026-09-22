@@ -6,6 +6,8 @@
 
 - Controls whether the Web Service is available to ANY user.
 - Toggled by ADMIN via `PATCH /api/v1/admin/web-services/{code}/status`.
+- Web Services are registered by the developer through the seeder;
+  the admin does NOT create new Web Services.
 - When globally OFF, ALL users receive HTTP 403 regardless of their individual
   permission records.
 - When globally ON, consumption still requires the user's individual permission
@@ -16,7 +18,13 @@
 `api_user_web_services.is_enabled`
 
 - Controls whether a specific user is allowed to consume a Web Service.
-- Managed by ADMIN via `PUT /api/v1/admin/users/{id}/web-services`.
+- Managed by ADMIN via:
+  - `PUT /api/v1/admin/users/{id}/web-services` — bulk/full replacement of the
+    whole assigned set (`min:1`, inactive services rejected).
+  - `PATCH /api/v1/admin/users/{id}/web-services/{code}` — enable/disable one
+    permission (Phase 4.2).
+  - `DELETE /api/v1/admin/users/{id}/web-services` — revoke every permission
+    for the user at once (Phase 4.2).
 - Independent of the global status.
 
 ## Effective Access

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Models\WebService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,5 +34,40 @@ class UserController extends ApiJsonController
         $user->currentAccessToken()->delete();
 
         return $this->success('Password has been reset. Please log in again.');
+    }
+
+    /**
+     * List the current user's Web Service permissions (read-only).
+     *
+     * Returns ALL registered Web Services so the user can see which exist,
+     * which are globally active, whether they hold a permission, and whether
+     * access is effectively available. Uses only the authenticated user —
+     * no user_id parameter is accepted.
+     */
+    public function webServices(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user('api');
+
+        $services = WebService::query()->orderBy('code')->get();
+
+        $data = $services->map(function (WebService $service) use ($user) {
+            $permission = $user->webServices()
+                ->where('api_web_services.code', $service->code)
+                ->first();
+
+            $isEnabled = $permission !== null && $permission->pivot->is_enabled;
+
+            return [
+                'code' => $service->code,
+                'name' => $service->name,
+                'description' => $service->description,
+                'global_is_active' => $service->is_active,
+                'is_enabled' => $isEnabled,
+                'effective_access' => $user->isActive() && $service->is_active && $isEnabled,
+            ];
+        });
+
+        return $this->success('Web Services retrieved.', $data);
     }
 }

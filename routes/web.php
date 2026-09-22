@@ -22,3 +22,11 @@ Route::get('admin/users', function () {
 Route::get('admin/users/{id}', function ($id) {
     return view('admin.users.show');
 })->where('id', '[0-9]+')->name('admin.users.show');
+
+Route::get('admin/web-services', function () {
+    return view('admin.web-services');
+})->name('admin.web-services');
+
+Route::get('admin/web-services/{code}', function ($code) {
+    return view('admin.web-services.show', ['code' => $code]);
+})->where('code', '[A-Za-z0-9_]+')->name('admin.web-services.show');

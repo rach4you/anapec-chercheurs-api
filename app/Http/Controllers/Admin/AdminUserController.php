@@ -7,13 +7,16 @@ use App\Http\Requests\Admin\AssignWebServicesRequest;
 use App\Http\Requests\Admin\CreateUserRequest;
 use App\Http\Requests\Admin\ToggleUserStatusRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Http\Requests\Admin\UpdateUserWebServicePermissionRequest;
 use App\Http\Resources\UserCollection;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\UserWebService;
 use App\Models\WebService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminUserController extends ApiJsonController
 {
@@ -162,5 +165,147 @@ class AdminUserController extends ApiJsonController
         }
 
         return $this->success('Web Services assigned.');
+    }
+
+    /**
+     * Enable or disable a single Web Service permission for a user.
+     */
+    public function updateWebServicePermission(UpdateUserWebServicePermissionRequest $request, int $id, string $code): JsonResponse
+    {
+        $user = User::query()->findOrFail($id);
+
+        $enabled = filter_var($request->validated('is_enabled'), FILTER_VALIDATE_BOOL);
+
+        try {
+            $result = DB::transaction(function () use ($user, $code, $enabled): array {
+                $service = WebService::query()->where('code', $code)->first();
+
+                if (! $service) {
+                    return ['not_found' => true];
+                }
+
+                // Enabling access requires the Web Service to be globally active.
+                // Disabling is always allowed, even for an inactive service:
+                // access can be withdrawn from a service that is no longer offered.
+                if ($enabled && ! $service->is_active) {
+                    return ['not_active' => true];
+                }
+
+                $row = UserWebService::query()
+                    ->where('user_id', $user->id)
+                    ->where('web_service_id', $service->id)
+                    ->first();
+
+                // Disabling a permission that was never granted does not need a
+                // meaningless disabled row: absence already means "no access".
+                if (! $row && ! $enabled) {
+                    return [
+                        'unchanged' => true,
+                        'service' => $service,
+                        'row' => null,
+                    ];
+                }
+
+                if ($row && $row->is_enabled === $enabled) {
+                    return [
+                        'unchanged' => true,
+                        'service' => $service,
+                        'row' => $row,
+                    ];
+                }
+
+                if ($row) {
+                    $row->is_enabled = $enabled;
+                    $row->updated_at = now();
+                    $row->save();
+
+                    return [
+                        'unchanged' => false,
+                        'service' => $service,
+                        'row' => $row,
+                    ];
+                }
+
+                UserWebService::query()->create([
+                    'user_id' => $user->id,
+                    'web_service_id' => $service->id,
+                    'is_enabled' => $enabled,
+                ]);
+
+                $created = UserWebService::query()
+                    ->where('user_id', $user->id)
+                    ->where('web_service_id', $service->id)
+                    ->first();
+
+                return [
+                    'unchanged' => false,
+                    'service' => $service,
+                    'row' => $created,
+                ];
+            });
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent request created the row between our read and write.
+            // Converge on the row it created instead of failing the request.
+            $result = DB::transaction(function () use ($user, $code, $enabled): array {
+                $service = WebService::query()->where('code', $code)->firstOrFail();
+
+                $row = UserWebService::query()
+                    ->where('user_id', $user->id)
+                    ->where('web_service_id', $service->id)
+                    ->first();
+
+                $unchanged = $row !== null && $row->is_enabled === $enabled;
+
+                if (! $unchanged) {
+                    $row->is_enabled = $enabled;
+                    $row->updated_at = now();
+                    $row->save();
+                }
+
+                return [
+                    'unchanged' => $unchanged,
+                    'service' => $service,
+                    'row' => $row,
+                ];
+            });
+        }
+
+        if (isset($result['not_found'])) {
+            return $this->error("Web Service '{$code}' does not exist.", null, 404);
+        }
+
+        if (isset($result['not_active'])) {
+            return $this->error("Web Service '{$code}' is not active.", null, 422);
+        }
+
+        $service = $result['service'];
+        $row = $result['row'];
+
+        $isEnabled = $row !== null && (bool) $row->is_enabled;
+
+        return $this->success($result['unchanged'] ? 'Permission unchanged.' : 'Permission updated.', [
+            'code' => $service->code,
+            'name' => $service->name,
+            'description' => $service->description,
+            'global_is_active' => $service->is_active,
+            'is_enabled' => $isEnabled,
+            'effective_access' => $user->isActive() && $service->is_active && $isEnabled,
+        ]);
+    }
+
+    /**
+     * Revoke every Web Service permission held by a user.
+     */
+    public function revokeAllWebServices(Request $request, int $id): JsonResponse
+    {
+        $user = User::query()->findOrFail($id);
+
+        DB::transaction(function () use ($user): void {
+            UserWebService::query()
+                ->where('user_id', $user->id)
+                ->delete();
+        });
+
+        return $this->success('Web Services revoked.');
     }
 }

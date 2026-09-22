@@ -106,9 +106,9 @@
 <div id="permissions-card" class="mt-6 hidden rounded-lg border border-gray-200 bg-white shadow-sm">
     <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
         <h3 class="text-sm font-semibold text-gray-900">Permissions Web Services</h3>
-        <button type="button" id="btn-edit-permissions"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-            Modifier les permissions
+        <button type="button" id="btn-revoke-perms"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+            Révoquer toutes les permissions
         </button>
     </div>
     <div id="permissions-skeleton" class="px-6 py-4"></div>
@@ -234,30 +234,36 @@
     </div>
 </div>
 
-{{-- ── PERMISSIONS EDIT MODAL ── --}}
-<div id="perm-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
-     role="dialog" aria-modal="true" aria-labelledby="perm-modal-title">
-    <div id="perm-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+{{-- ── CONFIRM REVOKE-ALL MODAL ── --}}
+<div id="revoke-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
+     role="dialog" aria-modal="true" aria-labelledby="revoke-modal-title">
+    <div id="revoke-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
     <div class="relative z-10 w-full max-w-md rounded-t-xl sm:rounded-xl border border-gray-200 bg-white shadow-lg sm:m-4">
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-            <h3 id="perm-modal-title" class="text-base font-semibold text-gray-900">Modifier les permissions</h3>
-            <button type="button" id="perm-modal-close" class="p-1 text-gray-400 transition-colors hover:text-gray-600" aria-label="Fermer">
+            <h3 id="revoke-modal-title" class="text-base font-semibold text-gray-900">Révoquer toutes les permissions</h3>
+            <button type="button" id="revoke-modal-close"
+                    class="p-1 text-gray-400 transition-colors hover:text-gray-600"
+                    aria-label="Fermer">
                 <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
                 </svg>
             </button>
         </div>
-        <div id="perm-modal-list" class="max-h-80 overflow-y-auto px-5 py-4"></div>
-        <div class="flex items-center justify-end gap-2.5 border-t border-gray-100 px-5 py-4">
-            <button type="button" id="perm-modal-cancel"
-                    class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-                Annuler
-            </button>
-            <button type="button" id="btn-save-perms"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
-                <span id="btn-save-perms-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                <span id="btn-save-perms-text">Enregistrer</span>
-            </button>
+        <div class="space-y-4 px-5 py-4">
+            <p id="revoke-modal-message" class="text-sm text-gray-700"></p>
+            <div id="revoke-modal-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700"
+                 role="alert"></div>
+            <div class="flex items-center justify-end gap-2.5 pt-2">
+                <button type="button" id="revoke-modal-cancel"
+                        class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
+                    Annuler
+                </button>
+                <button type="button" id="btn-confirm-revoke"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                    <span id="btn-confirm-revoke-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                    <span id="btn-confirm-revoke-text">Révoquer</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -451,25 +457,81 @@
     }
 
     // ── PERMISSIONS ──
+    // allPermissions merges the full official Web Service catalogue with this
+    // user's assigned permissions, so an admin can also grant a first
+    // permission to a user who currently has none.
     var allPermissions = [];
+    var permissionToggleBusy = {};
+
+    function updateRevokeButton() {
+        var btn = document.getElementById('btn-revoke-perms');
+        if (!btn) return;
+        var anyAssigned = allPermissions.some(function (p) {
+            return p.is_enabled === true;
+        });
+        btn.disabled = !anyAssigned;
+        btn.title = anyAssigned ? '' : 'Cet utilisateur n\'a aucune permission activée.';
+    }
+
     function loadPermissions() {
         document.getElementById('permissions-skeleton').innerHTML =
             '<div class="space-y-3"><div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div></div>';
+            '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div>' +
+            '<div class="h-4 w-40 animate-pulse rounded bg-gray-200"></div></div>';
         document.getElementById('permissions-skeleton').classList.remove('hidden');
         document.getElementById('permissions-body').classList.add('hidden');
 
-        get('/api/v1/admin/users/' + userId + '/web-services')
-            .then(function (res) {
+        var assignedReq = get('/api/v1/admin/users/' + userId + '/web-services');
+        var catalogReq = get('/api/v1/admin/web-services');
+
+        Promise.all([assignedReq, catalogReq])
+            .then(function (responses) {
                 document.getElementById('permissions-skeleton').classList.add('hidden');
-                if (res.status === 403) {
+
+                var assignedRes = responses[0];
+                var catalogRes = responses[1];
+                if (assignedRes.status === 403) {
                     renderPermissionsEmpty();
                     return;
                 }
-                if (!res.ok) { renderPermissionsError(); return; }
-                return res.json().then(function (data) {
-                    if (!data.success || !Array.isArray(data.data)) { renderPermissionsError(); return; }
-                    allPermissions = data.data;
+                if (!assignedRes.ok || !catalogRes.ok) {
+                    renderPermissionsError();
+                    return;
+                }
+
+                return Promise.all([assignedRes.json(), catalogRes.json()]).then(function (payloads) {
+                    var assignedData = payloads[0];
+                    var catalogData = payloads[1];
+
+                    if (!assignedData.success || !Array.isArray(assignedData.data)) {
+                        renderPermissionsError();
+                        return;
+                    }
+                    if (!catalogData.success || !Array.isArray(catalogData.data)) {
+                        renderPermissionsError();
+                        return;
+                    }
+
+                    var byCode = {};
+                    assignedData.data.forEach(function (p) {
+                        byCode[p.code] = p;
+                    });
+
+                    allPermissions = catalogData.data.map(function (svc) {
+                        var assigned = byCode[svc.code];
+                        var isEnabled = assigned !== undefined && assigned.is_enabled === true;
+                        return {
+                            code: svc.code,
+                            name: svc.name || '',
+                            description: svc.description || '',
+                            global_is_active: svc.is_active === true,
+                            is_enabled: isEnabled,
+                            effective_access: assigned !== undefined
+                                ? assigned.effective_access === true
+                                : (currentUser && currentUser.is_active === true && svc.is_active === true && isEnabled)
+                        };
+                    });
+
                     renderPermissions();
                 });
             })
@@ -483,7 +545,8 @@
         var body = document.getElementById('permissions-body');
         body.classList.remove('hidden');
         if (!allPermissions.length) {
-            body.innerHTML = '<p class="text-sm text-gray-500">Aucune permission Web Service pour cet utilisateur.</p>';
+            body.innerHTML = '<p class="text-sm text-gray-500">Aucun Web Service officiel disponible.</p>';
+            updateRevokeButton();
             return;
         }
         var html = '';
@@ -496,18 +559,22 @@
                 : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Inactif</span>';
             var permBadge = enabled
                 ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Activée</span>'
-                : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Désactivée</span>';
+                : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Non appliquée</span>';
             var effBadge = effective
                 ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Autorisé</span>'
                 : '<span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">Refusé</span>';
 
             html += '<div class="mb-3 last:mb-0 rounded-lg border border-gray-200 p-4">' +
                 '<div class="flex items-center justify-between gap-3">' +
-                '<div>' +
+                '<div class="min-w-0">' +
                 '<p class="text-sm font-semibold text-gray-900">' + esc(p.code) + '</p>' +
-                '<p class="text-xs text-gray-500">' + esc(p.name || '') + '</p>' +
+                '<p class="text-xs text-gray-500">' + esc(p.name) + '</p>' +
+                (p.description ? '<p class="mt-0.5 text-xs text-gray-400">' + esc(p.description) + '</p>' : '') +
                 '</div>' +
+                '<div class="flex items-center gap-2.5">' +
                 effBadge +
+                permToggle(p, enabled) +
+                '</div>' +
                 '</div>' +
                 '<dl class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">' +
                 '<div><dt class="text-xs font-medium text-gray-500">Statut global</dt><dd class="mt-0.5">' + globalBadge + '</dd></div>' +
@@ -518,19 +585,219 @@
                 '</div>';
         });
         body.innerHTML = html;
+        updateRevokeButton();
+
+        body.querySelectorAll('[data-perm-code]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                togglePermission(btn.getAttribute('data-perm-code'), btn.getAttribute('data-next') === 'true', btn);
+            });
+        });
+    }
+
+    function permToggle(p, enabled) {
+        var code = esc(p.code);
+        var next = !enabled;
+        var isGlobalActive = p.global_is_active === true;
+        // Enabling requires a globally active service; disabling is always allowed.
+        var nextAllowed = !next || isGlobalActive;
+        var busy = permissionToggleBusy[p.code] === true;
+        var spin = '<span class="h-3 w-3 animate-spin rounded-full border-2 border-current opacity-60"></span> ';
+        var classes = nextAllowed
+            ? (next
+                ? 'border-green-200 text-green-700 hover:bg-green-50'
+                : 'border-red-200 text-red-700 hover:bg-red-50')
+            : 'border-gray-200 text-gray-400 cursor-not-allowed';
+        var title = nextAllowed ? '' : 'Ce Web Service est inactif : impossible de l\'activer.';
+        var label = nextAllowed ? (next ? 'Activer' : 'Désactiver') : 'Verrouillé';
+
+        return '<button type="button" data-perm-code="' + code + '" data-next="' + next + '" ' +
+            (busy || !nextAllowed ? 'disabled ' : '') +
+            'aria-busy="' + busy + '" aria-label="' + esc(label + ' ' + p.code) + '" title="' + esc(title) + '" ' +
+            'class="inline-flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-medium transition-colors ' + classes + '">' +
+            (busy ? spin : '') + esc(label) + '</button>';
+    }
+
+    function togglePermission(code, next, btn) {
+        var idx = -1;
+        for (var i = 0; i < allPermissions.length; i++) {
+            if (allPermissions[i].code === code) { idx = i; break; }
+        }
+        if (idx === -1) return;
+
+        var prev = {};
+        Object.keys(allPermissions[idx]).forEach(function (k) {
+            prev[k] = allPermissions[idx][k];
+        });
+        permissionToggleBusy[code] = true;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+
+        var api = window.apiClient;
+
+        function done() {
+            permissionToggleBusy[code] = false;
+            renderPermissions();
+        }
+
+        if (!api) {
+            delete permissionToggleBusy[code];
+            showToast('Client API introuvable.', 'error');
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+            return;
+        }
+
+        api.patch('/admin/users/' + userId + '/web-services/' + encodeURIComponent(code), { is_enabled: next })
+            .then(function (res) {
+                // The API wraps the payload: res.data = {success, message, data: {...}}.
+                var body = res && res.data;
+                var data = body && body.data;
+                if (data && typeof data.is_enabled === 'boolean') {
+                    // API response is the source of truth for this card.
+                    allPermissions[idx].is_enabled = data.is_enabled === true;
+                    allPermissions[idx].effective_access = data.effective_access === true;
+                    if (typeof data.global_is_active === 'boolean') {
+                        allPermissions[idx].global_is_active = data.global_is_active === true;
+                    }
+                } else {
+                    // Malformed/empty payload: fall back to the requested state
+                    // and keep effective access consistent so no field goes stale.
+                    allPermissions[idx].is_enabled = next;
+                    allPermissions[idx].effective_access = !!(next
+                        && allPermissions[idx].global_is_active === true
+                        && currentUser
+                        && currentUser.is_active === true);
+                }
+                done();
+                showToast(next ? 'Permission activée.' : 'Permission désactivée.');
+            })
+            .catch(function (err) {
+                // Restore the previous switch state on any failure.
+                allPermissions[idx] = prev;
+                var status = err.status || (err.response ? err.response.status : null);
+                var body = err.body || (err.response ? err.response.data : null);
+                var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                if (status === 403) {
+                    msg = 'Accès non autorisé.';
+                } else if (status === 422 && body && body.message) {
+                    msg = body.message;
+                } else if (body && body.message) {
+                    msg = body.message;
+                }
+                done();
+                showToast(msg, 'error');
+            });
     }
 
     function renderPermissionsEmpty() {
         var body = document.getElementById('permissions-body');
         body.classList.remove('hidden');
         body.innerHTML = '<p class="text-sm text-gray-500">Permission introuvable ou non autorisé.</p>';
+        updateRevokeButton();
     }
 
     function renderPermissionsError() {
         var body = document.getElementById('permissions-body');
         body.classList.remove('hidden');
         body.innerHTML = '<p class="text-sm text-red-600">Impossible de charger les permissions.</p>';
+        updateRevokeButton();
     }
+
+    // ════════════════════════════════════════════
+    //  REVOKE-ALL CONFIRMATION
+    // ════════════════════════════════════════════
+    var revokeModal = document.getElementById('revoke-modal');
+    var revokeBackdrop = document.getElementById('revoke-modal-backdrop');
+    var revokeMessage = document.getElementById('revoke-modal-message');
+    var revokeError = document.getElementById('revoke-modal-error');
+    var revokeBtn = document.getElementById('btn-confirm-revoke');
+    var revokeBtnText = document.getElementById('btn-confirm-revoke-text');
+    var revokeBtnSpinner = document.getElementById('btn-confirm-revoke-spinner');
+    var revokeLastFocused = null;
+    var revoking = false;
+
+    function openRevoke() {
+        var count = allPermissions.filter(function (p) {
+            return p.is_enabled === true;
+        }).length;
+        if (!count) return;
+        revokeLastFocused = document.activeElement;
+        revokeMessage.textContent = 'Voulez-vous révoquer les ' + count +
+            ' permission(s) Web Service accordée(s) à ' + (currentUser ? currentUser.name : 'cet utilisateur') + ' ?';
+        revokeError.classList.add('hidden');
+        revokeModal.classList.remove('hidden');
+        revokeModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        revokeBtn.focus();
+    }
+    function closeRevoke(force) {
+        if (revoking && !force) return;
+        revokeModal.classList.add('hidden');
+        revokeModal.classList.remove('flex');
+        document.body.style.overflow = '';
+        if (revokeLastFocused && revokeLastFocused.focus) revokeLastFocused.focus();
+    }
+
+    var revokeTrigger = document.getElementById('btn-revoke-perms');
+    if (revokeTrigger) revokeTrigger.addEventListener('click', openRevoke);
+    document.getElementById('revoke-modal-close').addEventListener('click', closeRevoke);
+    document.getElementById('revoke-modal-cancel').addEventListener('click', closeRevoke);
+    revokeBackdrop.addEventListener('click', closeRevoke);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !revokeModal.classList.contains('hidden')) closeRevoke();
+    });
+
+    revokeBtn.addEventListener('click', function () {
+        if (revoking) return;
+        var api = window.apiClient;
+        if (!api) {
+            revokeError.textContent = 'Client API introuvable.';
+            revokeError.classList.remove('hidden');
+            return;
+        }
+
+        revoking = true;
+        revokeBtn.disabled = true;
+        revokeBtnSpinner.classList.remove('hidden');
+        revokeBtnText.textContent = 'Révocation en cours...';
+
+        api.delete('/admin/users/' + userId + '/web-services')
+            .then(function () {
+                allPermissions = allPermissions.map(function (p) {
+                    return {
+                        code: p.code,
+                        name: p.name,
+                        description: p.description,
+                        global_is_active: p.global_is_active,
+                        is_enabled: false,
+                        effective_access: false
+                    };
+                });
+                revoking = false;
+                revokeBtn.disabled = false;
+                revokeBtnSpinner.classList.add('hidden');
+                revokeBtnText.textContent = 'Révoquer';
+                closeRevoke(true);
+                renderPermissions();
+                showToast('Toutes les permissions ont été révoquées.');
+            })
+            .catch(function (err) {
+                revoking = false;
+                revokeBtn.disabled = false;
+                revokeBtnSpinner.classList.add('hidden');
+                revokeBtnText.textContent = 'Révoquer';
+                var status = err.status || (err.response ? err.response.status : null);
+                var body = err.body || (err.response ? err.response.data : null);
+                var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                if (status === 403) {
+                    msg = 'Accès non autorisé.';
+                } else if (body && body.message) {
+                    msg = body.message;
+                }
+                revokeError.textContent = msg;
+                revokeError.classList.remove('hidden');
+            });
+    });
 
     // ── RETRY ──
     var retry = document.getElementById('btn-retry');
@@ -800,108 +1067,6 @@
             });
     });
 
-    // ════════════════════════════════════════════
-    //  PERMISSIONS EDIT MODAL
-    // ════════════════════════════════════════════
-    var permModal = document.getElementById('perm-modal');
-    var permBackdrop = document.getElementById('perm-modal-backdrop');
-    var permList = document.getElementById('perm-modal-list');
-    var permBtn = document.getElementById('btn-save-perms');
-    var permBtnText = document.getElementById('btn-save-perms-text');
-    var permBtnSpinner = document.getElementById('btn-save-perms-spinner');
-    var permLastFocused = null;
-    var permSubmitting = false;
-    var permChecks = {};
-
-    function openPerms() {
-        if (!allPermissions.length) return;
-        permLastFocused = document.activeElement;
-        permChecks = {};
-        var html = '';
-        allPermissions.forEach(function (p) {
-            var enabled = p.is_enabled === true;
-            html += '<label class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 mb-2 last:mb-0 cursor-pointer">' +
-                '<div>' +
-                '<p class="text-sm font-medium text-gray-900">' + esc(p.code) + '</p>' +
-                '<p class="text-xs text-gray-500">' + esc(p.name || '') + '</p>' +
-                '</div>' +
-                '<input type="checkbox" data-code="' + esc(p.code) + '" class="perm-check h-4 w-4 rounded border-gray-300 text-anapec-600 focus:ring-anapec-500" ' + (enabled ? 'checked' : '') + ' />' +
-                '</label>';
-        });
-        permList.innerHTML = html;
-        permModal.classList.remove('hidden');
-        permModal.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
-    function closePerms() {
-        permModal.classList.add('hidden');
-        permModal.classList.remove('flex');
-        document.body.style.overflow = '';
-        if (permLastFocused && permLastFocused.focus) permLastFocused.focus();
-    }
-
-    document.getElementById('btn-edit-permissions').addEventListener('click', openPerms);
-    document.getElementById('perm-modal-close').addEventListener('click', closePerms);
-    document.getElementById('perm-modal-cancel').addEventListener('click', closePerms);
-    permBackdrop.addEventListener('click', closePerms);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !permModal.classList.contains('hidden')) closePerms();
-    });
-
-    permBtn.addEventListener('click', function () {
-        if (permSubmitting || !allPermissions.length) return;
-        permSubmitting = true;
-        permBtn.disabled = true;
-        permBtnSpinner.classList.remove('hidden');
-        permBtnText.textContent = 'Enregistrement...';
-
-        var payload = allPermissions.map(function (p) {
-            var cb = permList.querySelector('.perm-check[data-code="' + p.code + '"]');
-            return { code: p.code, enabled: cb ? cb.checked : (p.is_enabled === true) };
-        });
-
-        var api = window.apiClient;
-        function done() {
-            permSubmitting = false;
-            permBtn.disabled = false;
-            permBtnSpinner.classList.add('hidden');
-            permBtnText.textContent = 'Enregistrer';
-        }
-
-        if (!api) {
-            done();
-            showToast('Client API introuvable.', 'error');
-            return;
-        }
-
-        api.put('/admin/users/' + userId + '/web-services', { web_services: payload })
-            .then(function () {
-                done();
-                closePerms();
-                showToast('Permissions mises à jour avec succès.');
-                loadPermissions();
-            })
-            .catch(function (err) {
-                done();
-                var status = err.status || (err.response ? err.response.status : null);
-                if (status === 401) {
-                    localStorage.removeItem('anapec_token');
-                    localStorage.removeItem('anapec_user');
-                    window.location.href = '/login';
-                    return;
-                }
-                if (status === 403) {
-                    showToast('Accès non autorisé.', 'error');
-                    return;
-                }
-                var body = err.body || (err.response ? err.response.data : null);
-                if (status === 422 && body) {
-                    showToast('Erreur de validation. Veuillez réessayer.', 'error');
-                    return;
-                }
-                showToast('Une erreur est survenue. Veuillez réessayer.', 'error');
-            });
-    });
 })();
 </script>
 @endsection

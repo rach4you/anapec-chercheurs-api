@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Admin\ToggleWebServiceStatusRequest;
+use App\Http\Requests\Admin\UpdateWebServiceRequest;
 use App\Http\Resources\WebServiceResource;
 use App\Models\WebService;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,25 @@ class WebServiceController extends ApiJsonController
         $service = WebService::query()->where('code', $code)->firstOrFail();
 
         return $this->success('Web Service retrieved.', new WebServiceResource($service));
+    }
+
+    /**
+     * Update a Web Service's updatable metadata (admin-only).
+     *
+     * The `code` is a technical identifier and is never updatable, and
+     * the global ON/OFF status is handled by its dedicated `toggleStatus`
+     * endpoint, so only `name` and `description` are applied.
+     */
+    public function update(UpdateWebServiceRequest $request, string $code): JsonResponse
+    {
+        $service = WebService::query()->where('code', $code)->firstOrFail();
+
+        $service->update([
+            'name' => $request->validated('name'),
+            'description' => $request->validated('description'),
+        ]);
+
+        return $this->success('Web Service updated.', new WebServiceResource($service->fresh()));
     }
 
     /**

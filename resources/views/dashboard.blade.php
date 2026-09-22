@@ -89,6 +89,7 @@
             </span>
         </div>
         <p id="val-perms" class="mt-3 text-3xl font-bold text-gray-900" data-placeholder="--">--</p>
+        <p id="val-perms-sub" class="mt-1 text-xs text-gray-500 hidden"></p>
     </div>
 </div>
 
@@ -206,8 +207,7 @@
                     // Regular user: hide admin-only cards
                     var adminCards = document.querySelectorAll('[data-visibility="admin"]');
                     adminCards.forEach(function (c) { c.style.display = 'none'; });
-                    // No user-facing permissions endpoint exists yet → show "--"
-                    document.getElementById('val-perms').textContent = '--';
+                    loadOwnPermissions();
                 }
             });
         })
@@ -292,6 +292,41 @@
         } else {
             hideSkeleton('val-perms', '--');
         }
+    }
+
+    // ── Regular user's own Web Service permissions ──
+    function loadOwnPermissions() {
+        showSkeleton('val-perms');
+
+        api.get('/api/v1/user/web-services')
+            .then(function (res) {
+                // A 403 on this read-only endpoint must NOT log the user out;
+                // a safe fallback is shown instead.
+                if (res.status === 403) { hideSkeleton('val-perms', '--'); return; }
+                if (res.status === 401) {
+                    localStorage.removeItem('anapec_token');
+                    localStorage.removeItem('anapec_user');
+                    window.location.href = '/login';
+                    return;
+                }
+                if (!res.ok) { hideSkeleton('val-perms', '--'); return; }
+                return res.json().then(function (data) {
+                    if (data.success && Array.isArray(data.data)) {
+                        var effective = data.data.filter(function (p) {
+                            return p.effective_access === true;
+                        }).length;
+                        hideSkeleton('val-perms', String(effective));
+                        var sub = document.getElementById('val-perms-sub');
+                        if (sub) {
+                            sub.textContent = effective === 1 ? '1 service accessible' : effective + ' services accessibles';
+                            sub.classList.remove('hidden');
+                        }
+                    } else {
+                        hideSkeleton('val-perms', '--');
+                    }
+                });
+            })
+            .catch(function () { hideSkeleton('val-perms', '--'); });
     }
 })();
 </script>

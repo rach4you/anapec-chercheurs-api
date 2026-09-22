@@ -19,6 +19,8 @@ tags:
     description: Admin web service management
   - name: Services
     description: Web service consumption endpoints
+  - name: User
+    description: Read-only view of the current user's own data
 
 paths:
   # ── AUTH ──
@@ -105,12 +107,39 @@ paths:
           content:
             application/json:
               schema:
+                 type: object
+                 properties:
+                   success: { type: boolean, example: true }
+                   message: { type: string, example: "Authenticated user." }
+                   data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── USER SELF-SERVICE ──
+  /user/web-services:
+    get:
+      tags: [User]
+      summary: List the current user's Web Service permissions (read-only)
+      description: >
+        Returns ALL registered Web Services for the currently authenticated
+        user only. No user_id parameter is accepted. effective_access is
+        true only when the user is active, the service is globally active,
+        and the user's permission is enabled.
+      responses:
+        '200':
+          description: Own Web Service permissions
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
                   success: { type: boolean, example: true }
-                  message: { type: string, example: "Authenticated user." }
+                  message: { type: string, example: "Web Services retrieved." }
                   data:
-                    $ref: '#/components/schemas/User'
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserWebServicePermission'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -304,6 +333,10 @@ paths:
     get:
       tags: [Admin - Users]
       summary: List Web Services assigned to a user
+      description: >
+        Returns only the permissions this user is actually assigned to.
+        To view every registered Web Service for a user, see
+        `GET /user/web-services`.
       responses:
         '200':
           description: Web Services for user
@@ -327,6 +360,13 @@ paths:
     put:
       tags: [Admin - Users]
       summary: Assign/replace Web Services for a user
+      description: >
+        Bulk/full replacement of the whole assigned set. At least one Web
+        Service must be provided (an empty list is invalid) and every
+        submitted service must exist and be globally active. Use
+        `PATCH /admin/users/{id}/web-services/{code}` to toggle a single
+        permission, and `DELETE /admin/users/{id}/web-services` to revoke
+        every permission at once.
       requestBody:
         required: true
         content:
@@ -351,6 +391,90 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Admin - Users]
+      summary: Revoke every Web Service permission for a user
+      description: >
+        Removes all Web Service permission rows for the user. The operation
+        is idempotent: deleting twice returns 200 both times. This is the
+        only supported way to revoke every permission at once - `PUT` with an
+        empty list remains invalid.
+      responses:
+        '200':
+          description: Every Web Service permission was revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Services revoked." }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/users/{id}/web-services/{code}:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+      - $ref: '#/components/parameters/WebServiceCode'
+    patch:
+      tags: [Admin - Users]
+      summary: Enable or disable one Web Service permission for a user
+      description: >
+        Single-permission management: toggles the `is_enabled` flag of the
+        user's permission for one Web Service. Enabling requires the Web
+        Service to be globally active, otherwise a 422 is returned with
+        "Web Service '{code}' is not active.". Disabling is always allowed,
+        even for an inactive Web Service: access can be withdrawn from a
+        service that is no longer offered. When no permission row exists,
+        enabling creates one; disabling a never-granted permission returns
+        "Permission unchanged." without creating a meaningless row. A no-op
+        request leaves `updated_at` untouched.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserWebServicePermission'
+      responses:
+        '200':
+          description: Permission updated, unchanged, or preserved as absent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message:
+                    type: string
+                    example: "Permission updated."
+                  data:
+                    $ref: '#/components/schemas/UserWebServicePermission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Unknown user or unknown Web Service code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: "Web Service 'WS_CV' does not exist."
+        '422':
+          description: Validation failed, or enabling a globally inactive service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: "Web Service 'WS_CV' is not active."
 
   # ── ADMIN WEB SERVICES ──
   /admin/web-services:
@@ -406,6 +530,39 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Admin - Web Services]
+      summary: Update Web Service metadata
+      description: >
+        Updates the updatable metadata (name, description) of a Web Service.
+        The code is a technical identifier and is immutable. The global status
+        is managed by its dedicated status endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebService'
+      responses:
+        '200':
+          description: Web Service updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Web Service updated." }
+                  data:
+                    $ref: '#/components/schemas/WebService'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /admin/web-services/{code}/status:
     parameters:
@@ -668,6 +825,10 @@ components:
         name:
           type: string
           example: "CV"
+        description:
+          type: string
+          nullable: true
+          example: "Fetch the full CV of a researcher."
         global_is_active:
           type: boolean
           example: true
@@ -722,6 +883,22 @@ components:
           type: string
           enum: [admin, user]
 
+    UpdateWebService:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Web Service display name
+          example: "Check CIN"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional Web Service description
+          example: "Verify a CIN number"
+
     AssignWebServices:
       type: object
       required: [web_services]
@@ -741,6 +918,18 @@ components:
               enabled:
                 type: boolean
                 description: Defaults to true
+
+    UpdateUserWebServicePermission:
+      type: object
+      required: [is_enabled]
+      properties:
+        is_enabled:
+          type: boolean
+          description: >
+            Enable the permission when true (the Web Service must be globally
+            active), or disable it when false (always allowed, even for an
+            inactive Web Service).
+          example: true
 
     Error:
       type: object

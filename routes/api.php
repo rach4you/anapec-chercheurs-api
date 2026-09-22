@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::patch('user/password', [UserController::class, 'updatePassword']);
+        Route::get('user/web-services', [UserController::class, 'webServices']);
 
         Route::middleware(['ws:WS_CHECK_CIN', 'throttle:60,1'])
             ->post('services/check-cin', [CheckCinController::class, 'check']);
@@ -32,9 +33,12 @@ Route::prefix('v1')->group(function (): void {
             Route::post('users/{id}/password', [AdminUserController::class, 'resetPassword']);
             Route::get('users/{id}/web-services', [AdminUserController::class, 'webServices']);
             Route::put('users/{id}/web-services', [AdminUserController::class, 'assignWebServices']);
+            Route::delete('users/{id}/web-services', [AdminUserController::class, 'revokeAllWebServices']);
+            Route::patch('users/{id}/web-services/{code}', [AdminUserController::class, 'updateWebServicePermission']);
 
             Route::get('web-services', [WebServiceController::class, 'index']);
             Route::get('web-services/{code}', [WebServiceController::class, 'show']);
+            Route::patch('web-services/{code}', [WebServiceController::class, 'update']);
             Route::patch('web-services/{code}/status', [WebServiceController::class, 'toggleStatus']);
         });
     });

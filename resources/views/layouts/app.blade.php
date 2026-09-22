@@ -56,7 +56,7 @@
                 <span>Utilisateurs</span>
             </a>
 
-            <a href="#" data-nav="web-services" data-admin-only
+            <a href="{{ route('admin.web-services') }}" data-nav="web-services" data-admin-only
                class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
@@ -146,7 +146,7 @@
                 <span>Utilisateurs</span>
             </a>
 
-            <a href="#" data-mobile-nav="web-services" data-admin-only
+            <a href="{{ route('admin.web-services') }}" data-mobile-nav="web-services" data-admin-only
                class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
@@ -275,6 +275,8 @@
         activeNav = 'dashboard';
     } else if (path.indexOf('/admin/users') !== -1) {
         activeNav = 'users';
+    } else if (path.indexOf('/admin/web-services') !== -1) {
+        activeNav = 'web-services';
     } else {
         activeNav = null;
     }

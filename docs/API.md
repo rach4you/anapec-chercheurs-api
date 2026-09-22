@@ -212,6 +212,68 @@ Request:
 }
 ```
 
+Bulk/full replacement of the whole assigned set. At least one Web Service is
+required (`web_services.min:1`), and every submitted service must exist and be
+globally active. An empty list is invalid.
+
+### Update a Single User Web Service Permission (Phase 4.2)
+
+```
+PATCH /api/v1/admin/users/{id}/web-services/{code}
+```
+
+Request:
+```json
+{
+  "is_enabled": true
+}
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Permission updated.",
+  "data": {
+    "code": "WS_CV",
+    "name": "CV",
+    "description": "Fetch the full CV of a researcher.",
+    "global_is_active": true,
+    "is_enabled": true,
+    "effective_access": true
+  }
+}
+```
+
+Rules:
+
+- `is_enabled: true` requires the Web Service to be globally active. Enabling an
+  inactive service returns `422` with `"Web Service 'WS_CV' is not active."`.
+- `is_enabled: false` is always allowed, even for a globally inactive service:
+  access can be withdrawn from a service that is no longer offered.
+- If no permission row exists, `true` creates one; `false` leaves the state as-is
+  and returns `"Permission unchanged."` without creating a meaningless row.
+- Re-applying the current value returns `"Permission unchanged."` and does not
+  touch `updated_at`.
+- Unknown service code -> `404` with `"Web Service 'WS_CV' does not exist."`.
+
+### Revoke All User Web Services (Phase 4.2)
+
+```
+DELETE /api/v1/admin/users/{id}/web-services
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Web Services revoked."
+}
+```
+
+Removes every Web Service permission row for the user. Idempotent: a second call
+also returns `200`. This is the only way to revoke every permission at once.
+
 ## Web Service Management (Phase 2)
 
 ### List Web Services
@@ -244,6 +306,49 @@ Response (200):
 ```
 GET /api/v1/admin/web-services/{code}
 ```
+
+### Update Web Service Metadata
+
+```
+PATCH /api/v1/admin/web-services/{code}
+```
+
+Request:
+```json
+{
+  "name": "Check CIN",
+  "description": "Verify a CIN number"
+}
+```
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `name` | string | required, max 255 |
+| `description` | string | nullable, max 500 |
+
+Only updatable metadata is accepted. The `code` is a technical identifier and
+is immutable. The global status is managed by its dedicated `PATCH .../status`
+endpoint and cannot be changed here. Unexpected fields are ignored.
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Web Service updated.",
+  "data": {
+    "id": 1,
+    "code": "WS_CHECK_CIN",
+    "name": "Check CIN",
+    "description": "Verify a CIN number",
+    "is_active": true,
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+Errors: `401` unauthenticated, `403` non-admin, `404` unknown `code`,
+`422` validation failure (missing/too-long `name`, too-long `description`).
 
 ### Toggle Web Service Status (Global ON/OFF)
 
@@ -310,6 +415,44 @@ Request:
   "password_confirmation": "newpassword1"
 }
 ```
+
+### Own Web Service Permissions (Read-Only)
+
+```
+GET /api/v1/user/web-services
+Authorization: Bearer {token}
+```
+
+Lists ALL registered Web Services for the **currently authenticated user only**
+(no `user_id` parameter is accepted). This is read-only: it lets the user see
+which services exist, whether each is globally active, whether they hold a
+permission, and whether access is effectively available. It is available to
+every authenticated user (admin or regular); an admin sees their own
+permissions, not a directory of all users.
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "Web Services retrieved.",
+  "data": [
+    {
+      "code": "WS_CHECK_CIN",
+      "name": "Check CIN",
+      "description": "Verify a CIN number",
+      "global_is_active": true,
+      "is_enabled": true,
+      "effective_access": true
+    }
+  ]
+}
+```
+
+`effective_access` is `true` only when: user active **AND** service globally
+active **AND** the user's permission is enabled.
+
+Errors: `401` unauthenticated (or the user is inactive — same as every other
+authenticated API route).
 
 ## Creating Admin Users
 
