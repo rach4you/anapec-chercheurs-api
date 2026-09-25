@@ -89,6 +89,10 @@
             <dt class="text-xs font-medium text-gray-500">Statut global</dt>
             <dd id="detail-status" class="mt-1">—</dd>
         </div>
+        <div class="sm:col-span-2">
+            <dt class="text-xs font-medium text-gray-500">Domaines</dt>
+            <dd id="detail-domains" class="mt-1 text-sm text-gray-700">—</dd>
+        </div>
         <div>
             <dt class="text-xs font-medium text-gray-500">Créé le</dt>
             <dd id="detail-created" class="mt-1 text-sm text-gray-700">—</dd>
@@ -130,6 +134,13 @@
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '—';
         return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function esc(v) {
+        if (v === null || v === undefined) return '';
+        var d = document.createElement('div');
+        d.textContent = String(v);
+        return d.innerHTML;
     }
 
     function statusBadge(active) {
@@ -251,6 +262,14 @@
         document.getElementById('detail-name').textContent = currentService.name || '—';
         document.getElementById('detail-description').textContent = currentService.description || '—';
         document.getElementById('detail-status').innerHTML = statusBadge(currentService.is_active === true);
+        var domains = Array.isArray(currentService.domains) ? currentService.domains : [];
+        document.getElementById('detail-domains').innerHTML = domains.length
+            ? domains.map(function (d) {
+                return '<span class="inline-flex items-center rounded-full ' +
+                    (d.is_active === true ? 'bg-anapec-100 text-anapec-700' : 'bg-gray-100 text-gray-600') +
+                    ' px-2 py-0.5 text-xs font-medium" title="' + esc(d.code) + '">' + esc(d.code) + '</span>';
+            }).join(' ')
+            : '—';
         document.getElementById('detail-created').textContent = fmtDate(currentService.created_at);
         document.getElementById('detail-updated').textContent = fmtDate(currentService.updated_at);
         root.classList.remove('hidden');

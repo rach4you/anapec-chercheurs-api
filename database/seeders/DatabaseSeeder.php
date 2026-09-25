@@ -15,9 +15,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Initial Web Services are seeded idempotently. No production users
-        // are created here; the first ADMIN is created via the CLI
-        // (`php artisan app:create-api-user`).
-        $this->call(WebServiceSeeder::class);
+        // Initial Web Services and the default Web Service Domain are seeded
+        // idempotently. No production users are created here; the first ADMIN
+        // is created via the CLI (`php artisan app:create-api-user`).
+        $this->call([
+            WebServiceSeeder::class,
+            WebServiceDomainSeeder::class,
+        ]);
     }
 }

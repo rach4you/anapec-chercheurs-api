@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Models\WebService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,10 +16,10 @@ class EnsureUserCanConsumeWebService
      * Verify that:
      * 1. The user is authenticated
      * 2. The user is active
-     * 3. The user's role allows consumption
-     * 4. The requested Web Service is active
-     * 5. The user has a permission record for that Web Service
-     * 6. The permission is enabled
+     * 3. The requested Web Service exists and is globally active
+     * 4. The user has effective access to that Web Service
+     *    (direct permission, an enabled active domain containing the
+     *    service, or both — an explicit disabled override always wins)
      */
     public function handle(Request $request, Closure $next, string $webServiceCode)
     {
@@ -33,7 +34,7 @@ class EnsureUserCanConsumeWebService
             return $this->deny('Account is deactivated.');
         }
 
-        $webService = \App\Models\WebService::query()
+        $webService = WebService::query()
             ->where('code', $webServiceCode)
             ->first();
 
@@ -45,7 +46,7 @@ class EnsureUserCanConsumeWebService
             return $this->deny('Web Service is disabled.');
         }
 
-        if (! $user->canConsumeWebService($webServiceCode)) {
+        if (! $user->hasEffectiveAccessTo($webService)) {
             return $this->deny('Insufficient permissions.');
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\WebService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AssignWebServicesRequest extends FormRequest
@@ -51,7 +52,7 @@ class AssignWebServicesRequest extends FormRequest
                     continue;
                 }
 
-                $webService = \App\Models\WebService::query()->where('code', $code)->first();
+                $webService = WebService::query()->where('code', $code)->first();
 
                 if (! $webService) {
                     $validator->errors()->add('web_services', "Web Service '{$code}' does not exist.");

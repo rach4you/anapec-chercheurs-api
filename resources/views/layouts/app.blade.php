@@ -68,6 +68,18 @@
                 <span>Web Services</span>
             </a>
 
+            <a href="{{ route('admin.web-service-domains') }}" data-nav="web-service-domains" data-admin-only
+                class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
+                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
+                <svg class="h-5 w-5 shrink-0 text-gray-400 group-hover:text-anapec-600 data-[active=true]:text-anapec-600"
+                     viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M2.5 3.25a.75.75 0 0 1 .75-.75h13.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H3.25a.75.75 0 0 1-.75-.75V3.25Zm1.5.75v12h12v-12h-12Z"/>
+                    <path d="M5.5 7h9v2h-9V7Zm0 3.5h9v2h-9v-2Zm0 3.5h5v2h-5v-2Z"/>
+                </svg>
+                <span>Domaines</span>
+            </a>
+
             <a href="{{ url('api/documentation') }}" target="_blank" data-nav="docs"
                class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
@@ -156,6 +168,18 @@
                           d="M5 3.25a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 .75.75V5.5a.75.75 0 0 1-.75.75h-8.5A.75.75 0 0 1 5 5.5V3.25Zm0 4.5a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-.75.75H5.75a.75.75 0 0 1-.75-.75V7.75Z"/>
                 </svg>
                 <span>Web Services</span>
+            </a>
+
+            <a href="{{ route('admin.web-service-domains') }}" data-mobile-nav="web-service-domains" data-admin-only
+                class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
+                       text-gray-700 hover:bg-anapec-50 hover:text-anapec-700
+                       data-[active=true]:bg-anapec-100 data-[active=true]:text-anapec-700">
+                <svg class="h-5 w-5 shrink-0 text-gray-400 group-hover:text-anapec-600 data-[active=true]:text-anapec-600"
+                     viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M2.5 3.25a.75.75 0 0 1 .75-.75h13.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H3.25a.75.75 0 0 1-.75-.75V3.25Zm1.5.75v12h12v-12h-12Z"/>
+                    <path d="M5.5 7h9v2h-9V7Zm0 3.5h9v2h-9v-2Zm0 3.5h5v2h-5v-2Z"/>
+                </svg>
+                <span>Domaines</span>
             </a>
 
             <a href="{{ url('api/documentation') }}" target="_blank" data-mobile-nav="docs"

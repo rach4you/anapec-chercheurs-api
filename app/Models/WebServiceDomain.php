@@ -5,14 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class WebService extends Model
+class WebServiceDomain extends Model
 {
     /**
      * The table associated with the model.
      *
      * @var string
      */
-    protected $table = 'api_web_services';
+    protected $table = 'api_web_service_domains';
 
     /**
      * The attributes that are mass assignable.
@@ -24,6 +24,7 @@ class WebService extends Model
         'name',
         'description',
         'is_active',
+        'sort_order',
     ];
 
     /**
@@ -35,11 +36,27 @@ class WebService extends Model
     {
         return [
             'is_active' => 'boolean',
+            'sort_order' => 'integer',
         ];
     }
 
     /**
-     * The users associated with this Web Service.
+     * The web services associated with this domain.
+     *
+     * @return BelongsToMany
+     */
+    public function webServices()
+    {
+        return $this->belongsToMany(
+            WebService::class,
+            'api_domain_web_services',
+            'domain_id',
+            'web_service_id'
+        )->using(DomainWebService::class)->withTimestamps();
+    }
+
+    /**
+     * The users that have a permission record for this domain.
      *
      * @return BelongsToMany
      */
@@ -47,24 +64,17 @@ class WebService extends Model
     {
         return $this->belongsToMany(
             User::class,
-            'api_user_web_services',
-            'web_service_id',
+            'api_user_domains',
+            'domain_id',
             'user_id'
-        )->using(UserWebService::class)->withPivot('is_enabled')->withTimestamps();
+        )->using(UserDomain::class)->withPivot('is_enabled')->withTimestamps();
     }
 
     /**
-     * The domains associated with this Web Service.
-     *
-     * @return BelongsToMany
+     * Determine whether the domain is active.
      */
-    public function domains()
+    public function isActive(): bool
     {
-        return $this->belongsToMany(
-            WebServiceDomain::class,
-            'api_domain_web_services',
-            'web_service_id',
-            'domain_id'
-        )->using(DomainWebService::class)->withTimestamps();
+        return (bool) $this->is_active;
     }
 }

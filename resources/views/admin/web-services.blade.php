@@ -23,6 +23,7 @@
                         <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Nom</th>
                         <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Description</th>
                         <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Statut global</th>
+                        <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Domaines</th>
                         <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 text-right">Action</th>
                     </tr>
                 </thead>
@@ -173,6 +174,21 @@
         });
     }
 
+    function domainBadges(ws) {
+        var domains = Array.isArray(ws.domains) ? ws.domains : [];
+        if (!domains.length) {
+            return '<span class="text-gray-400">—</span>';
+        }
+        var html = '';
+        domains.forEach(function (d) {
+            var badgeClass = d.is_active === true
+                ? 'inline-flex items-center rounded-full bg-anapec-100 px-2 py-0.5 text-xs font-medium text-anapec-700'
+                : 'inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600';
+            html += '<span class="' + badgeClass + '" title="' + esc(d.code) + '">' + esc(d.code) + '</span> ';
+        });
+        return html;
+    }
+
     function statusBadge(active) {
         if (active) {
             return '<span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Actif</span>';
@@ -261,6 +277,7 @@
                 '<td class="px-4 py-4"><span class="inline-block h-4 w-32 animate-pulse rounded bg-gray-200"></span></td>' +
                 '<td class="px-4 py-4"><span class="inline-block h-4 w-40 animate-pulse rounded bg-gray-200"></span></td>' +
                 '<td class="px-4 py-4"><span class="inline-block h-4 w-16 animate-pulse rounded bg-gray-200"></span></td>' +
+                '<td class="px-4 py-4"><span class="inline-block h-4 w-24 animate-pulse rounded bg-gray-200"></span></td>' +
                 '<td class="px-4 py-4"><span class="inline-block h-4 w-20 animate-pulse rounded bg-gray-200"></span></td></tr>';
         }
         skeleton.innerHTML = rows;
@@ -305,6 +322,7 @@
                 '<td class="px-4 py-3 text-sm text-gray-600">' + esc(ws.name) + '</td>' +
                 '<td class="px-4 py-3 text-sm text-gray-500">' + desc + '</td>' +
                 '<td class="px-4 py-3">' + statusBadge(ws.is_active === true) + '</td>' +
+                '<td class="px-4 py-3"><div class="flex flex-wrap gap-1">' + domainBadges(ws) + '</div></td>' +
                 '<td class="px-4 py-3 text-right">' + action + '</td></tr>';
         });
         showTable();

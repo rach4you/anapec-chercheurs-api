@@ -2,23 +2,21 @@
 
 namespace App\Http\Resources;
 
-use App\Models\WebService;
+use App\Models\WebServiceDomain;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin WebService
+ * @mixin WebServiceDomain
  */
-class WebServiceResource extends JsonResource
+class WebServiceDomainResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
      */
     public function toArray(Request $request): array
     {
-        $domains = $this->whenLoaded('domains', function () {
-            return $this->domains;
-        }, []);
+        $serviceCount = (int) ($this->webServices_count ?? $this->webServices()->count());
 
         return [
             'id' => $this->id,
@@ -26,13 +24,8 @@ class WebServiceResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'is_active' => $this->is_active,
-            'domains' => collect($domains)->map(function ($d) {
-                return [
-                    'code' => $d->code,
-                    'name' => $d->name,
-                    'is_active' => $d->is_active,
-                ];
-            })->values(),
+            'sort_order' => $this->sort_order,
+            'service_count' => $serviceCount,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

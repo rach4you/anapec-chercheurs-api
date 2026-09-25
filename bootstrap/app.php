@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureUserCanConsumeWebService;
+use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,12 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'ws' => \App\Http\Middleware\EnsureUserCanConsumeWebService::class,
-            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'ws' => EnsureUserCanConsumeWebService::class,
+            'active' => EnsureUserIsActive::class,
         ]);
 
         $middleware->api(prepend: [
-            \App\Http\Middleware\EnsureUserIsActive::class,
+            EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Services\CheckCinController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebServiceController;
+use App\Http\Controllers\WebServiceDomainController;
 use Illuminate\Support\Facades\Route;
 
 // ── Swagger / OpenAPI Documentation (public) ──
@@ -35,11 +36,21 @@ Route::prefix('v1')->group(function (): void {
             Route::put('users/{id}/web-services', [AdminUserController::class, 'assignWebServices']);
             Route::delete('users/{id}/web-services', [AdminUserController::class, 'revokeAllWebServices']);
             Route::patch('users/{id}/web-services/{code}', [AdminUserController::class, 'updateWebServicePermission']);
+            Route::get('users/{id}/domains', [AdminUserController::class, 'domains']);
+            Route::put('users/{id}/domains', [AdminUserController::class, 'assignDomains']);
+            Route::patch('users/{id}/domains/{code}', [AdminUserController::class, 'updateDomainPermission']);
 
             Route::get('web-services', [WebServiceController::class, 'index']);
             Route::get('web-services/{code}', [WebServiceController::class, 'show']);
             Route::patch('web-services/{code}', [WebServiceController::class, 'update']);
             Route::patch('web-services/{code}/status', [WebServiceController::class, 'toggleStatus']);
+
+            Route::get('domains', [WebServiceDomainController::class, 'index']);
+            Route::post('domains', [WebServiceDomainController::class, 'store']);
+            Route::get('domains/{code}', [WebServiceDomainController::class, 'show']);
+            Route::patch('domains/{code}', [WebServiceDomainController::class, 'update']);
+            Route::patch('domains/{code}/status', [WebServiceDomainController::class, 'toggleStatus']);
+            Route::put('domains/{code}/services', [WebServiceDomainController::class, 'assignServices']);
         });
     });
 });

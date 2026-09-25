@@ -146,11 +146,11 @@ class WebServiceUserOwnTest extends TestCase
         $this->assertFalse($row['effective_access']);
         WebService::query()->where('code', 'WS_CV')->update(['is_active' => true]);
 
-    // Permission disabled → not effective.
-    UserWebService::query()
-        ->where('user_id', $user->id)
-        ->where('web_service_id', WebService::query()->where('code', 'WS_CV')->value('id'))
-        ->update(['is_enabled' => false]);
+        // Permission disabled → not effective.
+        UserWebService::query()
+            ->where('user_id', $user->id)
+            ->where('web_service_id', WebService::query()->where('code', 'WS_CV')->value('id'))
+            ->update(['is_enabled' => false]);
         $row = collect($this->actingAs($user, 'api')->getJson('/api/v1/user/web-services')->json('data'))
             ->firstWhere('code', 'WS_CV');
         $this->assertFalse($row['effective_access']);

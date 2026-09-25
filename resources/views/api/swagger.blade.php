@@ -60,7 +60,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v8.5M5 7.5h14M5 19h14M5 7.5v11.5M5 16h14"/>
         </svg>
         <h1>Aucun Web Service accessible.</h1>
-        <p>Votre compte ne dispose actuellement d'aucun accès effectif à un Web Service.</p>
+        <p>Votre compte ne dispose actuellement d'aucun accès effectif à un Web Service, que ce soit directement ou via un domaine.</p>
     </div>
     <div id="state-error" style="display:none;">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -138,10 +138,13 @@
         // This mirrors the `ws:{CODE}` middleware bindings in
         // routes/api.php and the official Web Service catalogue. A user's
         // documentation is the union of the operations for every code they
-        // have effective_access on; operations for codes they do NOT have
-        // access to are removed. Codes with no documented operation yet
-        // (WS_PROFILE, WS_CV, WS_BILAN) contribute nothing today, which is
-        // correct — there is simply no documented endpoint to hide or show.
+        // have effective_access on (direct OR domain-granted). Operations
+        // for codes they do NOT have access to are removed.
+        //
+        // Domain grants (Phase 4) are already reflected in effective_access
+        // via the backend-computed field, so no separate domain logic is
+        // needed here. Codes with no documented operation yet contribute
+        // nothing to the filter.
         //
         // Authentication paths are generic platform docs and are always kept.
         // For non-admins /admin/* and /user/* paths are stripped (see the

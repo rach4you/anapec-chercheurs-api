@@ -102,10 +102,20 @@
     </dl>
 </div>
 
+{{-- ── DOMAIN GRANTS ── --}}
+<div id="domains-card" class="mt-6 hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <h3 class="text-sm font-semibold text-gray-900">Domaines</h3>
+        <p class="text-xs text-gray-500">Accès par domaine (mécanisme par défaut)</p>
+    </div>
+    <div id="domains-skeleton" class="px-6 py-4"></div>
+    <div id="domains-body" class="hidden px-6 py-4"></div>
+</div>
+
 {{-- ── WEB SERVICE PERMISSIONS ── --}}
 <div id="permissions-card" class="mt-6 hidden rounded-lg border border-gray-200 bg-white shadow-sm">
     <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-        <h3 class="text-sm font-semibold text-gray-900">Permissions Web Services</h3>
+        <h3 class="text-sm font-semibold text-gray-900">Exceptions Web Services</h3>
         <button type="button" id="btn-revoke-perms"
                 class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
             Révoquer toutes les permissions
@@ -394,6 +404,7 @@
     function showNotFound() {
         document.getElementById('not-found').classList.remove('hidden');
         document.getElementById('permissions-card').classList.add('hidden');
+        document.getElementById('domains-card').classList.add('hidden');
     }
 
     function showLoadError() {
@@ -410,6 +421,7 @@
     function loadUser() {
         hideAllStates();
         document.getElementById('user-info-card').classList.add('hidden');
+        document.getElementById('domains-card').classList.add('hidden');
         document.getElementById('permissions-card').classList.add('hidden');
         document.getElementById('permissions-skeleton').innerHTML =
             '<div class="space-y-3">' +
@@ -447,6 +459,7 @@
 
     function renderUser() {
         document.getElementById('user-info-card').classList.remove('hidden');
+        document.getElementById('domains-card').classList.remove('hidden');
         document.getElementById('permissions-card').classList.remove('hidden');
         document.getElementById('detail-name').textContent = currentUser.name || '—';
         document.getElementById('detail-email').textContent = currentUser.email || '—';
@@ -461,7 +474,10 @@
     // user's assigned permissions, so an admin can also grant a first
     // permission to a user who currently has none.
     var allPermissions = [];
+    var allDomains = [];
+    var allDomainCatalog = [];
     var permissionToggleBusy = {};
+    var domainToggleBusy = {};
 
     function updateRevokeButton() {
         var btn = document.getElementById('btn-revoke-perms');
@@ -478,18 +494,30 @@
             '<div class="space-y-3"><div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>' +
             '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div>' +
             '<div class="h-4 w-40 animate-pulse rounded bg-gray-200"></div></div>';
+        document.getElementById('domains-skeleton').innerHTML =
+            '<div class="space-y-3"><div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>' +
+            '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div>' +
+            '<div class="h-4 w-40 animate-pulse rounded bg-gray-200"></div></div>';
         document.getElementById('permissions-skeleton').classList.remove('hidden');
+        document.getElementById('domains-skeleton').classList.remove('hidden');
         document.getElementById('permissions-body').classList.add('hidden');
+        document.getElementById('domains-body').classList.add('hidden');
 
         var assignedReq = get('/api/v1/admin/users/' + userId + '/web-services');
         var catalogReq = get('/api/v1/admin/web-services');
+        var domainsReq = get('/api/v1/admin/users/' + userId + '/domains');
+        var domainCatalogReq = get('/api/v1/admin/domains');
 
-        Promise.all([assignedReq, catalogReq])
+        Promise.all([assignedReq, catalogReq, domainsReq, domainCatalogReq])
             .then(function (responses) {
                 document.getElementById('permissions-skeleton').classList.add('hidden');
+                document.getElementById('domains-skeleton').classList.add('hidden');
 
                 var assignedRes = responses[0];
                 var catalogRes = responses[1];
+                var domainsRes = responses[2];
+                var domainCatalogRes = responses[3];
+
                 if (assignedRes.status === 403) {
                     renderPermissionsEmpty();
                     return;
@@ -499,9 +527,15 @@
                     return;
                 }
 
-                return Promise.all([assignedRes.json(), catalogRes.json()]).then(function (payloads) {
+                return Promise.all([
+                    assignedRes.json(), catalogRes.json(),
+                    domainsRes.ok ? domainsRes.json() : { success: true, data: { domains: [], web_services: [] } },
+                    domainCatalogRes.ok ? domainCatalogRes.json() : { success: true, data: [] }
+                ]).then(function (payloads) {
                     var assignedData = payloads[0];
                     var catalogData = payloads[1];
+                    var domainsData = payloads[2];
+                    var domainCatalogData = payloads[3];
 
                     if (!assignedData.success || !Array.isArray(assignedData.data)) {
                         renderPermissionsError();
@@ -520,24 +554,193 @@
                     allPermissions = catalogData.data.map(function (svc) {
                         var assigned = byCode[svc.code];
                         var isEnabled = assigned !== undefined && assigned.is_enabled === true;
+                        var grantSource = assigned !== undefined ? assigned.grant_source : 'none';
+                        var domainGranted = assigned !== undefined ? assigned.domain_granted === true : false;
+                        var overrideDisabled = assigned !== undefined ? assigned.override_disabled === true : false;
                         return {
                             code: svc.code,
                             name: svc.name || '',
                             description: svc.description || '',
                             global_is_active: svc.is_active === true,
                             is_enabled: isEnabled,
+                            grant_source: grantSource,
+                            domain_granted: domainGranted,
+                            override_disabled: overrideDisabled,
                             effective_access: assigned !== undefined
                                 ? assigned.effective_access === true
                                 : (currentUser && currentUser.is_active === true && svc.is_active === true && isEnabled)
                         };
                     });
 
+                    if (domainsData.success && domainsData.data) {
+                        allDomains = Array.isArray(domainsData.data.domains) ? domainsData.data.domains : [];
+                    } else {
+                        allDomains = [];
+                    }
+
+                    if (domainCatalogData.success && Array.isArray(domainCatalogData.data)) {
+                        allDomainCatalog = domainCatalogData.data;
+                    } else {
+                        allDomainCatalog = [];
+                    }
+
                     renderPermissions();
+                    renderDomains();
                 });
             })
             .catch(function () {
                 document.getElementById('permissions-skeleton').classList.add('hidden');
+                document.getElementById('domains-skeleton').classList.add('hidden');
                 renderPermissionsError();
+            });
+    }
+
+    function renderDomains() {
+        var body = document.getElementById('domains-body');
+        body.classList.remove('hidden');
+
+        var grantedSet = {};
+        allDomains.forEach(function (d) { grantedSet[d.code] = d; });
+
+        // Build the full checkbox list from the domain catalog, merging the
+        // user's current grants (allDomains) onto it.
+        var rows = allDomainCatalog.map(function (d) {
+            var grant = grantedSet[d.code];
+            return {
+                code: d.code,
+                name: d.name || '',
+                is_active: d.is_active === true,
+                service_count: grant ? (grant.service_count || 0) : 0,
+                is_enabled: grant ? grant.is_enabled === true : false
+            };
+        });
+
+        if (!rows.length) {
+            body.innerHTML = '<p class="text-sm text-gray-500">Aucun domaine disponible.</p>';
+            return;
+        }
+
+        var anyGranted = rows.some(function (r) { return r.is_enabled; });
+        var html =
+            '<div class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-anapec-200 bg-anapec-50 px-4 py-3">' +
+            '<p class="text-xs font-medium text-anapec-700">' +
+            'Accordez un domaine pour ouvrir tous ses Web Services actifs d\'un coup.' +
+            '</p>' +
+            '<button type="button" id="btn-assign-domains" ' +
+            (anyGranted ? '' : 'disabled ') +
+            'class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">' +
+            'Assigner les domaines cochés' +
+            '</button>' +
+            '</div>';
+
+        rows.forEach(function (r) {
+            var active = r.is_active === true;
+            var granted = r.is_enabled === true;
+            html += '<div class="mb-3 last:mb-0 flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-4">' +
+                '<label class="flex min-w-0 items-start gap-3">' +
+                '<input type="checkbox" data-domain-check="' + esc(r.code) + '" ' + (granted ? 'checked' : '') +
+                ' class="mt-0.5 h-4 w-4 rounded border-gray-300 text-anapec-600 focus:ring-anapec-500" aria-label="Accorder ' + esc(r.code) + '" />' +
+                '<span class="min-w-0">' +
+                '<span class="flex items-center gap-2">' +
+                '<span class="font-mono text-sm font-semibold text-gray-900">' + esc(r.code) + '</span>' +
+                (active
+                    ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">Actif</span>'
+                    : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">Inactif</span>') +
+                '</span>' +
+                '<span class="mt-0.5 block text-xs text-gray-500">' + esc(r.name) + '</span>' +
+                '<span class="mt-0.5 block text-xs text-gray-400">' + (r.service_count || 0) + ' Web Services</span>' +
+                '</span>' +
+                '</label>' +
+                '</div>';
+        });
+
+        body.innerHTML = html;
+
+        var assignBtn = document.getElementById('btn-assign-domains');
+        if (assignBtn) assignBtn.addEventListener('click', function () {
+            var selected = [];
+            body.querySelectorAll('[data-domain-check]:checked').forEach(function (cb) {
+                selected.push(cb.getAttribute('data-domain-check'));
+            });
+            bulkAssignDomains(selected);
+        });
+    }
+
+    function bulkAssignDomains(selectedCodes) {
+        var api = window.apiClient;
+        if (!api) {
+            showToast('Client API introuvable.', 'error');
+            return;
+        }
+
+        var btn = document.getElementById('btn-assign-domains');
+        if (btn) { btn.disabled = true; btn.textContent = 'Assignation...'; }
+
+        api.put('/admin/users/' + userId + '/domains', { domains: selectedCodes })
+            .then(function () {
+                if (btn) { btn.disabled = false; btn.textContent = 'Assigner les domaines cochés'; }
+                showToast('Domaines assignés.');
+                loadPermissions();
+            })
+            .catch(function (err) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Assigner les domaines cochés'; }
+                var status = err.status || (err.response ? err.response.status : null);
+                var body = err.body || (err.response ? err.response.data : null);
+                var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                if (status === 403) msg = 'Accès non autorisé.';
+                else if (body && body.message) msg = body.message;
+                showToast(msg, 'error');
+            });
+    }
+
+    function toggleDomain(code, next, btn) {
+        // Legacy single-domain toggle (kept for PATCH-based toggles).
+        domainToggleBusy[code] = true;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+
+        var api = window.apiClient;
+
+        function done() {
+            domainToggleBusy[code] = false;
+            loadPermissions();
+        }
+
+        if (!api) {
+            delete domainToggleBusy[code];
+            showToast('Client API introuvable.', 'error');
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+            return;
+        }
+
+        api.patch('/admin/users/' + userId + '/domains/' + encodeURIComponent(code), { is_enabled: next })
+            .then(function (res) {
+                var body = res && res.data;
+                var data = body && body.data;
+                if (data) {
+                    var idx = -1;
+                    for (var i = 0; i < allDomains.length; i++) {
+                        if (allDomains[i].code === code) { idx = i; break; }
+                    }
+                    if (idx !== -1) {
+                        allDomains[idx].is_enabled = data.is_enabled === true;
+                    }
+                }
+                done();
+                showToast(next ? 'Domaine activé.' : 'Domaine désactivé.');
+            })
+            .catch(function (err) {
+                delete domainToggleBusy[code];
+                var status = err.status || (err.response ? err.response.status : null);
+                var body = err.body || (err.response ? err.response.data : null);
+                var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                if (status === 403) msg = 'Accès non autorisé.';
+                else if (status === 404) msg = 'Domaine introuvable.';
+                else if (body && body.message) msg = body.message;
+                showToast(msg, 'error');
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
             });
     }
 
@@ -563,6 +766,20 @@
             var effBadge = effective
                 ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Autorisé</span>'
                 : '<span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">Refusé</span>';
+            var sourceLabel = (function (src) {
+                switch (src) {
+                    case 'domain':
+                        return 'Via domaine';
+                    case 'direct':
+                        return 'Permission directe';
+                    case 'override_disabled':
+                        return 'Refus explicite';
+                    case 'none':
+                        return 'Aucun';
+                    default:
+                        return '—';
+                }
+            })(p.grant_source);
 
             html += '<div class="mb-3 last:mb-0 rounded-lg border border-gray-200 p-4">' +
                 '<div class="flex items-center justify-between gap-3">' +
@@ -579,8 +796,8 @@
                 '<dl class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">' +
                 '<div><dt class="text-xs font-medium text-gray-500">Statut global</dt><dd class="mt-0.5">' + globalBadge + '</dd></div>' +
                 '<div><dt class="text-xs font-medium text-gray-500">Permission</dt><dd class="mt-0.5">' + permBadge + '</dd></div>' +
-                '<div><dt class="text-xs font-medium text-gray-500">Accès effectif</dt><dd class="mt-0.5 text-xs font-medium text-gray-700">' +
-                (effective ? 'Autorisé' : 'Refusé') + '</dd></div>' +
+                '<div><dt class="text-xs font-medium text-gray-500">Source d\'accès</dt><dd class="mt-0.5 text-xs font-medium text-gray-700">' +
+                esc(sourceLabel) + '</dd></div>' +
                 '</dl>' +
                 '</div>';
         });

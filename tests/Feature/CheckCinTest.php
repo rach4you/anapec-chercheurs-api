@@ -24,7 +24,7 @@ class CheckCinTest extends TestCase
         $this->seed(WebServiceSeeder::class);
     }
 
-    private function userWithCinPermission(string $email = null, bool $enabled = true, bool $active = true): User
+    private function userWithCinPermission(?string $email = null, bool $enabled = true, bool $active = true): User
     {
         $factory = UserFactory::new();
 

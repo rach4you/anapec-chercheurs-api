@@ -13,7 +13,7 @@ class WebServiceFactory extends Factory
     /**
      * The model's factory associations.
      *
-     * @var list<\Illuminate\Database\Eloquent\Factories\Factory>
+     * @var list<Factory>
      */
     protected static ?array $container = [];
 
@@ -47,7 +47,7 @@ class WebServiceFactory extends Factory
     /**
      * Use one of the four known initial Web Services.
      *
-     * @param string $code WS_CHECK_CIN | WS_PROFILE | WS_CV | WS_BILAN
+     * @param  string  $code  WS_CHECK_CIN | WS_PROFILE | WS_CV | WS_BILAN
      */
     public function withCode(string $code): static
     {

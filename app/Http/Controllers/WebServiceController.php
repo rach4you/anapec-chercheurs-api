@@ -15,7 +15,7 @@ class WebServiceController extends ApiJsonController
      */
     public function index(): JsonResponse
     {
-        $services = WebService::query()->orderBy('code')->get();
+        $services = WebService::query()->with('domains')->orderBy('code')->get();
 
         return $this->success('Web Services retrieved.', WebServiceResource::collection($services));
     }
@@ -25,7 +25,7 @@ class WebServiceController extends ApiJsonController
      */
     public function show(string $code): JsonResponse
     {
-        $service = WebService::query()->where('code', $code)->firstOrFail();
+        $service = WebService::query()->where('code', $code)->with('domains')->firstOrFail();
 
         return $this->success('Web Service retrieved.', new WebServiceResource($service));
     }

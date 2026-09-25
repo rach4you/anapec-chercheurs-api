@@ -30,3 +30,11 @@ Route::get('admin/web-services', function () {
 Route::get('admin/web-services/{code}', function ($code) {
     return view('admin.web-services.show', ['code' => $code]);
 })->where('code', '[A-Za-z0-9_]+')->name('admin.web-services.show');
+
+Route::get('admin/web-service-domains', function () {
+    return view('admin.web-service-domains');
+})->name('admin.web-service-domains');
+
+Route::get('admin/web-service-domains', function () {
+    return view('admin.web-service-domains');
+})->name('admin.web-service-domains');

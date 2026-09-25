@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\ApiJsonController;
+use App\Http\Requests\Admin\AssignUserDomainsRequest;
 use App\Http\Requests\Admin\AssignWebServicesRequest;
 use App\Http\Requests\Admin\CreateUserRequest;
 use App\Http\Requests\Admin\ToggleUserStatusRequest;
+use App\Http\Requests\Admin\UpdateUserDomainPermissionRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Http\Requests\Admin\UpdateUserWebServicePermissionRequest;
 use App\Http\Resources\UserCollection;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Models\UserDomain;
 use App\Models\UserWebService;
 use App\Models\WebService;
+use App\Models\WebServiceDomain;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -127,13 +131,18 @@ class AdminUserController extends ApiJsonController
             ->where('user_id', $user->id)
             ->with('webService')
             ->get()
-            ->map(function (UserWebService $row) {
+            ->map(function (UserWebService $row) use ($user) {
+                $state = $user->effectiveAccessState($row->webService);
+
                 return [
-                    'code' => $row->webService->code,
-                    'name' => $row->webService->name,
-                    'global_is_active' => $row->webService->is_active,
-                    'is_enabled' => $row->is_enabled,
-                    'effective_access' => $row->webService->is_active && $row->is_enabled,
+                    'code' => $state['code'],
+                    'name' => $state['name'],
+                    'global_is_active' => $state['global_is_active'],
+                    'is_enabled' => $state['is_enabled'],
+                    'domain_granted' => $state['domain_granted'],
+                    'override_disabled' => $state['override_disabled'],
+                    'grant_source' => $state['grant_source'],
+                    'effective_access' => $state['effective_access'],
                 ];
             });
 
@@ -279,17 +288,19 @@ class AdminUserController extends ApiJsonController
         }
 
         $service = $result['service'];
-        $row = $result['row'];
 
-        $isEnabled = $row !== null && (bool) $row->is_enabled;
+        $state = $user->effectiveAccessState($service);
 
         return $this->success($result['unchanged'] ? 'Permission unchanged.' : 'Permission updated.', [
-            'code' => $service->code,
-            'name' => $service->name,
-            'description' => $service->description,
-            'global_is_active' => $service->is_active,
-            'is_enabled' => $isEnabled,
-            'effective_access' => $user->isActive() && $service->is_active && $isEnabled,
+            'code' => $state['code'],
+            'name' => $state['name'],
+            'description' => $state['description'],
+            'global_is_active' => $state['global_is_active'],
+            'is_enabled' => $state['is_enabled'],
+            'domain_granted' => $state['domain_granted'],
+            'override_disabled' => $state['override_disabled'],
+            'grant_source' => $state['grant_source'],
+            'effective_access' => $state['effective_access'],
         ]);
     }
 
@@ -307,5 +318,124 @@ class AdminUserController extends ApiJsonController
         });
 
         return $this->success('Web Services revoked.');
+    }
+
+    /**
+     * List the Web Service domains assigned to a user.
+     *
+     * Reports, for every domain, the user's grant flag and the count of
+     * services the domain currently contains. This is the "normal" grant
+     * path; `api_user_web_services` rows remain the override channel.
+     */
+    public function domains(int $id): JsonResponse
+    {
+        $user = User::query()->findOrFail($id);
+
+        $rows = UserDomain::query()
+            ->where('user_id', $user->id)
+            ->with('domain')
+            ->get()
+            ->map(function (UserDomain $row) {
+                return [
+                    'code' => $row->domain->code,
+                    'name' => $row->domain->name,
+                    'domain_is_active' => $row->domain->is_active,
+                    'service_count' => $row->domain->webServices()->count(),
+                    'is_enabled' => $row->is_enabled,
+                ];
+            });
+
+        $services = WebService::query()->orderBy('code')->get()
+            ->map(fn (WebService $service) => $user->effectiveAccessState($service))
+            ->values();
+
+        return $this->success('Domains and effective Web Service states retrieved.', [
+            'domains' => $rows,
+            'web_services' => $services,
+        ]);
+    }
+
+    /**
+     * Assign Web Service domains to a user (full replace).
+     *
+     * Replaces the user's entire set of domain grants with the provided list.
+     * Does not touch `api_user_web_services` override rows.
+     */
+    public function assignDomains(AssignUserDomainsRequest $request, int $id): JsonResponse
+    {
+        $user = User::query()->findOrFail($id);
+
+        $codes = $request->validated('domains');
+
+        DB::transaction(function () use ($user, $codes): void {
+            UserDomain::query()
+                ->where('user_id', $user->id)
+                ->delete();
+
+            $domains = WebServiceDomain::query()
+                ->whereIn('code', $codes)
+                ->pluck('code')
+                ->all();
+
+            foreach ($domains as $domainCode) {
+                $domain = WebServiceDomain::query()->where('code', $domainCode)->firstOrFail();
+                $user->domains()->attach($domain->id);
+            }
+        });
+
+        return $this->success('Domains assigned.');
+    }
+
+    /**
+     * Enable or disable a single domain grant for a user.
+     */
+    public function updateDomainPermission(UpdateUserDomainPermissionRequest $request, int $id, string $code): JsonResponse
+    {
+        $user = User::query()->findOrFail($id);
+        $domain = WebServiceDomain::query()->where('code', $code)->first();
+
+        if (! $domain) {
+            return $this->error("Domain '{$code}' does not exist.", null, 404);
+        }
+
+        $enabled = filter_var($request->validated('is_enabled'), FILTER_VALIDATE_BOOL);
+
+        $row = UserDomain::query()
+            ->where('user_id', $user->id)
+            ->where('domain_id', $domain->id)
+            ->first();
+
+        // Absence already means "no grant"; a disable of a missing row is a no-op.
+        if (! $row && ! $enabled) {
+            return $this->success('Permission unchanged.', [
+                'code' => $domain->code,
+                'name' => $domain->name,
+                'is_enabled' => false,
+            ]);
+        }
+
+        if ($row && $row->is_enabled === $enabled) {
+            return $this->success('Permission unchanged.', [
+                'code' => $domain->code,
+                'name' => $domain->name,
+                'is_enabled' => $enabled,
+            ]);
+        }
+
+        if ($row) {
+            $row->is_enabled = $enabled;
+            $row->updated_at = now();
+            $row->save();
+        } else {
+            $user->domains()->attach($domain->id, ['is_enabled' => $enabled]);
+        }
+
+        return $this->success('Permission updated.', [
+            'code' => $domain->code,
+            'name' => $domain->name,
+            'domain_is_active' => $domain->is_active,
+            'service_count' => $domain->webServices()->count(),
+            'is_enabled' => $enabled,
+        ]);
     }
 }

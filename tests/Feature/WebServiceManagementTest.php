@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureUserCanConsumeWebService;
 use App\Models\User;
+use App\Models\UserWebService;
 use App\Models\WebService;
 use Database\Factories\UserFactory;
 use Database\Seeders\WebServiceSeeder;
@@ -205,7 +206,7 @@ class WebServiceManagementTest extends TestCase
         $ws = $this->ws('WS_CV');
         $ws->update(['is_active' => false]);
 
-        $pivot = \App\Models\UserWebService::query()
+        $pivot = UserWebService::query()
             ->where('user_id', $user->id)
             ->where('web_service_id', $ws->id)
             ->first();

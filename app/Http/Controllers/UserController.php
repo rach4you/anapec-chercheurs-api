@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\WebService;
 use Illuminate\Http\JsonResponse;
@@ -51,22 +50,9 @@ class UserController extends ApiJsonController
 
         $services = WebService::query()->orderBy('code')->get();
 
-        $data = $services->map(function (WebService $service) use ($user) {
-            $permission = $user->webServices()
-                ->where('api_web_services.code', $service->code)
-                ->first();
-
-            $isEnabled = $permission !== null && $permission->pivot->is_enabled;
-
-            return [
-                'code' => $service->code,
-                'name' => $service->name,
-                'description' => $service->description,
-                'global_is_active' => $service->is_active,
-                'is_enabled' => $isEnabled,
-                'effective_access' => $user->isActive() && $service->is_active && $isEnabled,
-            ];
-        });
+        $data = $services
+            ->map(fn (WebService $service) => $user->effectiveAccessState($service))
+            ->values();
 
         return $this->success('Web Services retrieved.', $data);
     }
