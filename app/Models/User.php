@@ -122,6 +122,79 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * The Web Service codes the user is *configured* for, regardless of the
+     * current enabled state of the user, services or domains. This is the
+     * "configured access" indicator: it survives disabling and is restored
+     * on reactivation, so it intentionally ignores is_active flags.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    public function configuredServiceCodes(): \Illuminate\Support\Collection
+    {
+        $direct = $this->webServices()
+            ->wherePivot('is_enabled', true)
+            ->pluck('api_web_services.code')
+            ->values();
+
+        $viaDomain = $this->domains()
+            ->wherePivot('is_enabled', true)
+            ->with('webServices')
+            ->get()
+            ->flatMap(fn ($row) => $row->webServices->pluck('code'))
+            ->values();
+
+        return $direct->merge($viaDomain)->unique()->values();
+    }
+
+    /**
+     * The Web Service codes the user can actually consume *right now*.
+     *
+     * A configured service is effective only when the user is active AND the
+     * service is globally active AND an explicit disabled override row does
+     * not deny it. This mirrors {@see hasEffectiveAccessTo()} in bulk so the
+     * admin list page can display a single "effective access" indicator
+     * without one N+1 call per catalog service.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    public function effectiveServiceCodes(): \Illuminate\Support\Collection
+    {
+        if (! $this->isActive()) {
+            return collect();
+        }
+
+        $configured = $this->configuredServiceCodes();
+
+        if ($configured->isEmpty()) {
+            return collect();
+        }
+
+        $overrides = $this->webServices()
+            ->wherePivot('is_enabled', false)
+            ->pluck('api_web_services.code')
+            ->values()
+            ->all();
+
+        return WebService::query()
+            ->whereIn('code', $configured->all())
+            ->where('is_active', true)
+            ->pluck('code')
+            ->reject(fn (string $code) => in_array($code, $overrides, true))
+            ->values();
+    }
+
+    /**
+     * The user's most recent API session activity, or null when the user has
+     * never called the API. Exposed for the admin list "Dernière activité".
+     */
+    public function lastActivityAt(): ?\Illuminate\Support\Carbon
+    {
+        $token = $this->tokens()->orderByDesc('last_used_at')->first();
+
+        return $token?->last_used_at;
+    }
+
+    /**
      * Determine whether the user has an enabled permission for the given Web Service.
      */
     public function canConsumeWebService(string $code): bool

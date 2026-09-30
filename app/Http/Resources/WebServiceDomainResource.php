@@ -18,6 +18,8 @@ class WebServiceDomainResource extends JsonResource
     {
         $serviceCount = (int) ($this->webServices_count ?? $this->webServices()->count());
 
+        $webServices = $this->whenLoaded('webServices', fn () => $this->webServices, []);
+
         return [
             'id' => $this->id,
             'code' => $this->code,
@@ -26,6 +28,11 @@ class WebServiceDomainResource extends JsonResource
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
             'service_count' => $serviceCount,
+            'web_services' => collect($webServices)->map(fn ($ws) => [
+                'code' => $ws->code,
+                'name' => $ws->name,
+                'is_active' => $ws->is_active,
+            ])->values(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

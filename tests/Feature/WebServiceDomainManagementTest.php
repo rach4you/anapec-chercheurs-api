@@ -305,4 +305,41 @@ class WebServiceDomainManagementTest extends TestCase
         // Existing direct permission is untouched by the domain change.
         $this->assertTrue($regular->canConsumeWebService('WS_CV'));
     }
+
+    // --- 21. Admin can delete a domain ---
+    public function test_admin_can_delete_a_domain(): void
+    {
+        $admin = UserFactory::new()->asAdmin()->create(['email' => 'domdel@example.com', 'password' => 'secret123']);
+        $domain = $this->freshDomain(['name' => 'ToDelete']);
+
+        $this->actingAs($admin, 'api')
+            ->deleteJson('/api/v1/admin/domains/'.$domain->code)
+            ->assertOk()
+            ->assertJsonPath('message', 'Web Service domain deleted.');
+
+        $this->assertFalse(WebServiceDomain::query()->where('code', $domain->code)->exists());
+    }
+
+    // --- 22. Delete on unknown domain returns 404 ---
+    public function test_delete_unknown_domain_returns_404(): void
+    {
+        $admin = UserFactory::new()->asAdmin()->create(['email' => 'domdel404@example.com', 'password' => 'secret123']);
+
+        $this->actingAs($admin, 'api')
+            ->deleteJson('/api/v1/admin/domains/DOES_NOT_EXIST')
+            ->assertNotFound();
+    }
+
+    // --- 23. Regular user cannot delete a domain ---
+    public function test_regular_user_cannot_delete_a_domain(): void
+    {
+        $user = UserFactory::new()->create(['email' => 'domdeluser@example.com', 'password' => 'secret123']);
+        $domain = $this->freshDomain(['name' => 'CannotDelete']);
+
+        $this->actingAs($user, 'api')
+            ->deleteJson('/api/v1/admin/domains/'.$domain->code)
+            ->assertForbidden();
+
+        $this->assertTrue(WebServiceDomain::query()->where('code', $domain->code)->exists());
+    }
 }

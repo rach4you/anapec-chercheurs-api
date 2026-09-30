@@ -10,8 +10,9 @@ use App\Http\Requests\Admin\ToggleUserStatusRequest;
 use App\Http\Requests\Admin\UpdateUserDomainPermissionRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Http\Requests\Admin\UpdateUserWebServicePermissionRequest;
-use App\Http\Resources\UserCollection;
+use App\Http\Resources\AdminUserResource;
 use App\Http\Resources\UserResource;
+use App\Http\Resources\WebServiceDomainResource;
 use App\Models\User;
 use App\Models\UserDomain;
 use App\Models\UserWebService;
@@ -26,12 +27,69 @@ class AdminUserController extends ApiJsonController
 {
     /**
      * List all API users.
+     *
+     * Supports the admin list page:
+     *   GET /admin/users?search=...&status=active|inactive&per_page=20
+     *
+     * `search` matches name or email, `status` filters on `is_active`, and
+     * the response is paginated so the page never loads a full roster
+     * (10k+ users). Each row carries the derived access indicators
+     * `web_services_count`, `effective_services_count` and
+     * `last_activity_at`.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $users = User::query()->orderBy('name')->get();
+        $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
 
-        return $this->success('Users retrieved.', new UserCollection($users));
+        $paginator = User::query()
+            ->orderBy('name')
+            ->when((string) $request->query('search', ''), function ($query, string $term) {
+                $query->where(function ($q) use ($term) {
+                    $like = '%'.addcslashes($term, '%_\\').'%';
+                    $q->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+            })
+            ->when((string) $request->query('status', ''), function ($query, string $status) {
+                switch ($status) {
+                    case 'active':
+                        return $query->where('is_active', true);
+                    case 'inactive':
+                        return $query->where('is_active', false);
+                    default:
+                        return $query;
+                }
+            })
+            ->paginate($perPage);
+
+        $items = $paginator->getCollection()
+            ->map(fn (User $user) => (new AdminUserResource($user))->toArray($request))
+            ->values()
+            ->all();
+
+        $paginated = array_merge($paginator->toArray(), ['data' => $items]);
+
+        return $this->success('Users retrieved.', $paginated);
+    }
+
+    /**
+     * Create-scoped payload for the "Créer un utilisateur" flow:
+     * the full Web Service domain catalog with per-domain Web Service
+     * counts. The domain catalog is small (tens of items, not thousands)
+     * so it is returned in full, which lets the create form offer
+     * "Tous les domaines" vs "Domaines sélectionnés" without extra
+     * round trips.
+     */
+    public function createScope(): JsonResponse
+    {
+        $domains = WebServiceDomain::query()
+            ->with('webServices')
+            ->withCount('webServices')
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
+
+        return $this->success('Create scope retrieved.', WebServiceDomainResource::collection($domains));
     }
 
     /**
@@ -57,7 +115,9 @@ class AdminUserController extends ApiJsonController
             'is_active' => $request->validated('is_active', true),
         ]);
 
-        return $this->success('User created.', new UserResource($user), 201);
+        // The create form returns the full identity (with id) so the UI can
+        // follow up with a domain-assignment call in a second round trip.
+        return $this->success('User created.', new UserResource($user->fresh()), 201);
     }
 
     /**

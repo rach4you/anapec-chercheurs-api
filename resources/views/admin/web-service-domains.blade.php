@@ -1,3 +1,4 @@
+<!-- WRITE_TEST_QWEN3_CODER -->
 @extends('layouts.app')
 
 @section('title', 'Domaines Web Service')
@@ -167,6 +168,14 @@
                           class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500"></textarea>
                 <p id="err-edit-domain-description" class="mt-1 text-xs text-red-600 hidden"></p>
             </div>
+            <div>
+                <label for="edit-domain-sort_order" class="block text-sm font-medium text-gray-700">Ordre d'affichage</label>
+                <input type="number" id="edit-domain-sort_order" name="sort_order" min="0" max="9999"
+                       value="{{ old('sort_order', 0) }}"
+                       class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500" />
+                <p class="mt-1 text-xs text-gray-500">Valeur par défaut : 0. Les domaines avec un ordre inférieur s'affichent en premier.</p>
+                <p id="err-edit-domain-sort_order" class="mt-1 text-xs text-red-600 hidden"></p>
+            </div>
             <div class="flex items-center justify-end gap-2.5 pt-2">
                 <button type="button" id="domain-edit-modal-cancel"
                         class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
@@ -210,6 +219,38 @@
                     class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
                 <span id="btn-save-domain-services-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
                 <span id="btn-save-domain-services-text">Enregistrer</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- ── DELETE DOMAIN MODAL ── --}}
+<div id="domain-delete-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
+     role="dialog" aria-modal="true" aria-labelledby="domain-delete-modal-title">
+    <div id="domain-delete-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative z-10 w-full max-w-md rounded-t-xl sm:rounded-xl border border-gray-200 bg-white shadow-lg sm:m-4">
+        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <h3 id="domain-delete-modal-title" class="text-base font-semibold text-gray-900">Supprimer le domaine</h3>
+            <button type="button" id="domain-delete-modal-close" class="p-1 text-gray-400 transition-colors hover:text-gray-600" aria-label="Fermer">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+                </svg>
+            </button>
+        </div>
+        <div id="domain-delete-modal-error" class="mx-5 mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700" role="alert"></div>
+        <div class="px-5 py-4">
+            <p class="text-sm text-gray-600">Êtes-vous sûr de vouloir supprimer le domaine <strong id="domain-delete-code-display"></strong> ? Cette action est irréversible.</p>
+            <p class="mt-2 text-xs text-gray-500">Tous les Web Services rattachés à ce domaine seront également retirés.</p>
+        </div>
+        <div class="flex items-center justify-end gap-2.5 border-t border-gray-100 px-5 py-4">
+            <button type="button" id="domain-delete-modal-cancel"
+                    class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
+                Annuler
+            </button>
+            <button type="button" id="btn-delete-domain-submit"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                <span id="btn-delete-domain-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                <span id="btn-delete-domain-text">Supprimer</span>
             </button>
         </div>
     </div>
@@ -340,6 +381,12 @@
                     ' bg-white px-2.5 py-1.5 text-xs font-medium transition-colors ' +
                     'aria-label="' + (d.is_active === true ? 'Désactiver' : 'Activer') + ' ' + code + '">' +
                     (d.is_active === true ? 'Désactiver' : 'Activer') + '</button>' +
+                '<button type="button" data-domain-delete-code="' + code + '" ' +
+                    'class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 ' +
+                    'aria-label="Supprimer ' + code + '">' +
+                    '<svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' +
+                    '<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>' +
+                    '</svg>Supprimer</button>' +
                 '</div></td></tr>';
         });
         tbody.innerHTML = rows;
@@ -357,6 +404,11 @@
         tbody.querySelectorAll('[data-domain-services-code]').forEach(function (b) {
             b.addEventListener('click', function () {
                 openServicesModal(b.getAttribute('data-domain-services-code'));
+            });
+        });
+        tbody.querySelectorAll('[data-domain-delete-code]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                openDeleteModal(b.getAttribute('data-domain-delete-code'));
             });
         });
     }
@@ -623,8 +675,9 @@
         document.getElementById('edit-domain-code').value = d.code;
         document.getElementById('edit-domain-name').value = d.name || '';
         document.getElementById('edit-domain-description').value = d.description || '';
+        document.getElementById('edit-domain-sort_order').value = d.sort_order != null ? d.sort_order : 0;
         document.getElementById('domain-edit-modal-error').classList.add('hidden');
-        ['name', 'description'].forEach(function (f) {
+        ['name', 'description', 'sort_order'].forEach(function (f) {
             var el = document.getElementById('err-edit-domain-' + f);
             if (el) el.classList.add('hidden');
         });
@@ -888,6 +941,94 @@
     // ── Retry ──
     var retry = document.getElementById('btn-retry');
     if (retry) retry.addEventListener('click', loadDomains);
+
+    // ════════════════════════════════════════════════════
+    //  DELETE DOMAIN MODAL
+    // ════════════════════════════════════════════════════
+    var deleteModal = document.getElementById('domain-delete-modal');
+    var deleteBtn = document.getElementById('btn-delete-domain-submit');
+    var deleteText = document.getElementById('btn-delete-domain-text');
+    var deleteSpinner = document.getElementById('btn-delete-domain-spinner');
+    var deleting = false;
+    var deleteCode = null;
+    var deleteLastFocused = null;
+
+    function openDeleteModal(code) {
+        var d = domainsByCode[code];
+        if (!d) return;
+        deleteCode = code;
+        deleteLastFocused = document.activeElement;
+        document.getElementById('domain-delete-code-display').textContent = d.code;
+        document.getElementById('domain-delete-modal-error').classList.add('hidden');
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('btn-delete-domain-submit').focus();
+    }
+
+    function closeDeleteModal(force) {
+        if (deleting && !force) return;
+        deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
+        document.body.style.overflow = '';
+        deleteCode = null;
+        if (deleteLastFocused && deleteLastFocused.focus) deleteLastFocused.focus();
+    }
+
+    document.getElementById('domain-delete-modal-close').addEventListener('click', closeDeleteModal);
+    document.getElementById('domain-delete-modal-cancel').addEventListener('click', closeDeleteModal);
+    document.getElementById('domain-delete-modal-backdrop').addEventListener('click', closeDeleteModal);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !deleteModal.classList.contains('hidden')) closeDeleteModal();
+    });
+
+    deleteBtn.addEventListener('click', function () {
+        if (deleting || !deleteCode) return;
+
+        var api = window.apiClient;
+        if (!api) {
+            document.getElementById('domain-delete-modal-error').textContent = 'Client API introuvable.';
+            document.getElementById('domain-delete-modal-error').classList.remove('hidden');
+            return;
+        }
+
+        var code = deleteCode;
+        deleting = true;
+        deleteBtn.disabled = true;
+        deleteSpinner.classList.remove('hidden');
+        deleteText.textContent = 'Suppression...';
+
+        api['delete']('/admin/domains/' + code)
+            .then(function () {
+                deleting = false;
+                deleteBtn.disabled = false;
+                deleteSpinner.classList.add('hidden');
+                deleteText.textContent = 'Supprimer';
+                closeDeleteModal(true);
+                showToast('Domaine supprimé avec succès.');
+                loadDomains();
+            })
+            .catch(function (err) {
+                deleting = false;
+                deleteBtn.disabled = false;
+                deleteSpinner.classList.add('hidden');
+                deleteText.textContent = 'Supprimer';
+                var status = err.status || (err.response ? err.response.status : null);
+                var body = err.body || (err.response ? err.response.data : null);
+                if (status === 401) {
+                    localStorage.removeItem('anapec_token');
+                    localStorage.removeItem('anapec_user');
+                    window.location.href = '/login';
+                    return;
+                }
+                var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                if (status === 403) msg = 'Accès non autorisé.';
+                else if (status === 404) msg = 'Domaine introuvable.';
+                else if (body && body.message) msg = body.message;
+                document.getElementById('domain-delete-modal-error').textContent = msg;
+                document.getElementById('domain-delete-modal-error').classList.remove('hidden');
+            });
+    });
 })();
 </script>
 @endsection

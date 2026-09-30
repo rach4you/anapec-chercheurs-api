@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware(['can:admin'])->prefix('admin')->group(function (): void {
             Route::get('users', [AdminUserController::class, 'index']);
+            Route::get('users/create-scope', [AdminUserController::class, 'createScope']);
             Route::post('users', [AdminUserController::class, 'store']);
             Route::get('users/{id}', [AdminUserController::class, 'show']);
             Route::put('users/{id}', [AdminUserController::class, 'update']);
@@ -51,6 +52,7 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('domains/{code}', [WebServiceDomainController::class, 'update']);
             Route::patch('domains/{code}/status', [WebServiceDomainController::class, 'toggleStatus']);
             Route::put('domains/{code}/services', [WebServiceDomainController::class, 'assignServices']);
+            Route::delete('domains/{code}', [WebServiceDomainController::class, 'destroy']);
         });
     });
 });

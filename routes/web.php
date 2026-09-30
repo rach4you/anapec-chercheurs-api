@@ -6,7 +6,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// ── Frontend Portal (ANAPEC API Management) ──
+// -- Frontend Portal (ANAPEC API Management) --
 Route::get('login', function () {
     return view('auth.login');
 })->name('login');
@@ -16,11 +16,11 @@ Route::get('dashboard', function () {
 })->name('dashboard');
 
 Route::get('admin/users', function () {
-    return view('admin.users');
+    return view('admin.users.index');
 })->name('admin.users');
 
 Route::get('admin/users/{id}', function ($id) {
-    return view('admin.users.show');
+    return view('admin.user-detail', ['userId' => $id]);
 })->where('id', '[0-9]+')->name('admin.users.show');
 
 Route::get('admin/web-services', function () {
@@ -35,6 +35,3 @@ Route::get('admin/web-service-domains', function () {
     return view('admin.web-service-domains');
 })->name('admin.web-service-domains');
 
-Route::get('admin/web-service-domains', function () {
-    return view('admin.web-service-domains');
-})->name('admin.web-service-domains');

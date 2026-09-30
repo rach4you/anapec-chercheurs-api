@@ -124,4 +124,17 @@ class WebServiceDomainController extends ApiJsonController
             'web_services' => $services,
         ]);
     }
+
+    /**
+     * Delete a Web Service domain (admin-only).
+     */
+    public function destroy(string $code): JsonResponse
+    {
+        $domain = WebServiceDomain::query()->where('code', $code)->firstOrFail();
+
+        $domain->webServices()->detach();
+        $domain->delete();
+
+        return $this->success('Web Service domain deleted.', null, 200);
+    }
 }

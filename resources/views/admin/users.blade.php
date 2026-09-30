@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.metronic')
 
 @section('title', 'Utilisateurs')
 
@@ -12,15 +12,15 @@
         </p>
     </div>
     <button id="btn-new-user" type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M10.75 4.75a.75.75 0 0 0-1.5 0V7.5H6.5a.75.75 0 0 0 0 1.5h2.75v2.75a.75.75 0 0 0 1.5 0V9h2.75a.75.75 0 0 0 0-1.5h-2.75V4.75ZM10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/>
-        </svg>
-        Nouvel utilisateur
-    </button>
+        class="btn btn-color-mine btn-active btn-primary fw-semibold">
+    <span class="svg-icon svg-icon-2">
+        <span class="ki ki-user-plus"></span>
+    </span>
+    <span class="btn-text ms-2">Nouvel utilisateur</span>
+</button>
 </div>
 
-{{-- ── AUTHORIZATION LOADING STATE ── --}}
+{{-- "?" "?" AUTHORIZATION LOADING STATE "?" "?" --}}
 <div id="auth-loading" class="mt-6 flex items-center justify-center rounded-lg border border-gray-200 bg-white p-10 shadow-sm">
     <span class="inline-flex items-center gap-2 text-sm font-medium text-gray-500">
         <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-anapec-600"></span>
@@ -28,7 +28,7 @@
     </span>
 </div>
 
-{{-- ── ACCESS DENIED (403 / non-admin) ── --}}
+{{-- "?" "?" ACCESS DENIED (403 / non-admin) "?" "?" --}}
 <div id="access-denied" class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 p-6 text-center" role="alert">
     <p class="text-sm font-medium text-red-800">Accès non autorisé.</p>
     <p class="mt-1 text-sm text-red-600">
@@ -36,7 +36,7 @@
     </p>
 </div>
 
-{{-- ── LOAD ERROR + RETRY ── --}}
+{{-- "?" "?" LOAD ERROR + RETRY "?" "?" --}}
 <div id="load-error" class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 p-6 text-center" role="alert">
     <p class="text-sm font-medium text-red-800">Impossible de charger les utilisateurs.</p>
     <button id="btn-retry" type="button"
@@ -45,33 +45,33 @@
     </button>
 </div>
 
-{{-- ── SEARCH ── --}}
-<div class="relative mt-6 max-w-md">
-    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
-         viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-        <path fill-rule="evenodd" clip-rule="evenodd"
-              d="M8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM2.75 8a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5H3.5A.75.75 0 0 1 2.75 8Zm10.03.563a.75.75 0 0 1 .383.92 5.498 5.498 0 0 1-.5 1.18c.41.173.793.402 1.133.678a.75.75 0 0 1 .047.992.75.75 0 0 1-.992.047 3.999 3.999 0 0 0-1.808-1.119.75.75 0 0 1-.47-1.088 4.001 4.001 0 0 0 .824-1.432.75.75 0 0 1 .988-.363ZM8 2a6 6 0 1 1 5.225 8.959 5.499 5.499 0 0 0-1.856-1.188A6 6 0 0 1 8 2Z"/>
-    </svg>
-    <input type="search" id="user-search" placeholder="Rechercher un utilisateur..."
-           class="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500"
-           aria-label="Rechercher un utilisateur" />
+{{-- "?" "?" SEARCH "?" "?" --}}
+<div class="mb-5">
+    <div class="input-group">
+        <span class="input-group-text">
+            <span class="svg-icon svg-icon-2">
+                <span class="ki ki-search"></span>
+            </span>
+        </span>
+        <input type="search" id="user-search" class="form-control form-control-solid" placeholder="Rechercher un utilisateur..." aria-label="Rechercher un utilisateur">
+    </div>
 </div>
 
-{{-- ── TABLE CARD ── --}}
+{{-- "?" "?" TABLE CARD "?" "?" --}}
 <div class="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-left" id="users-table">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Nom</th>
-                    <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Email</th>
-                    <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Rôle</th>
-                    <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Statut</th>
-                    <th scope="col" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 text-right">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="users-tbody" class="divide-y divide-gray-100 bg-white"></tbody>
-        </table>
+<table class="table table-row-dashed table-row-gray-100 gs-0" id="users-table">
+    <thead class="fs-7 fw-bold text-uppercase text-gray-600">
+        <tr>
+            <th scope="col" class="px-6 py-4">Nom</th>
+            <th scope="col" class="px-6 py-4">Email</th>
+            <th scope="col" class="px-6 py-4">Rôle</th>
+            <th scope="col" class="px-6 py-4">Statut</th>
+            <th scope="col" class="px-6 py-4 text-end">Actions</th>
+        </tr>
+    </thead>
+    <tbody id="users-tbody" class="fs-6 fw-bold text-gray-800"></tbody>
+</table>
 
         {{-- Skeleton rows --}}
         <div id="users-skeleton" class="divide-y divide-gray-100 bg-white">
@@ -89,7 +89,7 @@
     </div>
 </div>
 
-{{-- ── SUCCESS NOTIFICATION ── --}}
+{{-- "?" "?" SUCCESS NOTIFICATION "?" "?" --}}
 <div id="success-toast" class="fixed right-4 top-4 z-[60] hidden max-w-sm rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-sm"
      role="status" aria-live="polite">
     <div class="flex items-start gap-2">
@@ -105,7 +105,60 @@
     </div>
 </div>
 
-{{-- ── CREATE USER MODAL ── --}}
+{{-- "?" "?" DELETE USER MODAL "?" "?" --}}
+<div id="user-delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center"
+     role="dialog" aria-modal="true" aria-labelledby="user-delete-modal-title">
+    {{-- Backdrop --}}
+    <div id="user-delete-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+
+    {{-- Panel --}}
+    <div class="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-lg m-4">
+        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <h3 id="user-delete-modal-title" class="text-base font-semibold text-gray-900">Supprimer l'utilisateur</h3>
+            <button type="button" id="user-delete-modal-close"
+                    class="p-1 text-gray-400 transition-colors hover:text-gray-600"
+                    aria-label="Fermer">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="px-5 py-6 text-center">
+            <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <svg class="h-6 w-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+            </div>
+            <p class="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir supprimer l'utilisateur
+                <strong id="user-delete-name-display"></strong>
+                (<span id="user-delete-email-display"></span>) ?
+            </p>
+            <p class="mt-2 text-xs text-gray-500">Cette action est irréversible.</p>
+
+            {{-- Error --}}
+            <div id="user-delete-modal-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700"
+                 role="alert"></div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 border-t border-gray-100 px-5 py-4">
+            <button type="button" id="user-delete-modal-cancel"
+                    class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
+                Annuler
+            </button>
+            <button type="button" id="btn-delete-user-submit"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                <span id="btn-delete-user-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                <span id="btn-delete-user-text">Supprimer</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- "?" "?" CREATE USER MODAL "?" "?" --}}
 <div id="user-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
      role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
     {{-- Backdrop --}}
@@ -230,16 +283,16 @@
 
     function roleBadge(role) {
         if (role === 'admin') {
-            return '<span class="inline-flex items-center rounded-full bg-anapec-100 px-2.5 py-0.5 text-xs font-medium text-anapec-700">Administrateur</span>';
+            return '<span class="badge badge-light-primary fw-semibold">Administrateur</span>';
         }
-        return '<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">Utilisateur</span>';
+        return '<span class="badge badge-light-secondary fw-semibold">Utilisateur</span>';
     }
-
+    
     function statusBadge(active) {
         if (active) {
-            return '<span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Actif</span>';
+            return '<span class="badge badge-light-success fw-semibold">Actif</span>';
         }
-        return '<span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">Inactif</span>';
+        return '<span class="badge badge-light-danger fw-semibold">Inactif</span>';
     }
 
     function esc(v) {
@@ -275,11 +328,11 @@
         accessDenied.classList.add('hidden');
         var rows = '';
         for (var i = 0; i < 5; i++) {
-            rows += '<tr class="bg-white"><td class="px-4 py-4"><span class="inline-block h-4 w-24 animate-pulse rounded bg-gray-200"></span></td>' +
-                    '<td class="px-4 py-4"><span class="inline-block h-4 w-40 animate-pulse rounded bg-gray-200"></span></td>' +
-                    '<td class="px-4 py-4"><span class="inline-block h-4 w-16 animate-pulse rounded bg-gray-200"></span></td>' +
-                    '<td class="px-4 py-4"><span class="inline-block h-4 w-16 animate-pulse rounded bg-gray-200"></span></td>' +
-                    '<td class="px-4 py-4"><span class="inline-block h-4 w-10 animate-pulse rounded bg-gray-200"></span></td></tr>';
+            rows += '<tr class="bg-white"><td class="px-6 py-4"><span class="inline-block h-4 w-24 animate-pulse rounded bg-gray-200"></span></td>' +
+                    '<td class="px-6 py-4"><span class="inline-block h-4 w-40 animate-pulse rounded bg-gray-200"></span></td>' +
+                    '<td class="px-6 py-4"><span class="inline-block h-4 w-16 animate-pulse rounded bg-gray-200"></span></td>' +
+                    '<td class="px-6 py-4"><span class="inline-block h-4 w-16 animate-pulse rounded bg-gray-200"></span></td>' +
+                    '<td class="px-6 py-4"><span class="inline-block h-4 w-10 animate-pulse rounded bg-gray-200"></span></td></tr>';
         }
         skeleton.innerHTML = rows;
     }
@@ -315,19 +368,33 @@
             var hay = ((u.name || '') + ' ' + (u.email || '') + ' ' + (u.role || '')).toLowerCase();
             if (q && hay.indexOf(q) === -1) continue;
 
-            var actionsHtml = '<a href="#" data-user-id="' + esc(u.id) + '" ' +
-                'class="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-anapec-50 hover:text-anapec-700" ' +
+            var viewBtn = '<a href="/admin/users/' + esc(u.id) + '" ' +
+                'class="btn btn-icon btn-active-light-primary w-30px h-30px me-1" ' +
                 'title="Voir les détails" aria-label="Voir les détails de ' + esc(u.name) + '">' +
-                '<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' +
-                '<path d="M11.75 2.5a.75.75 0 0 0-.5-.25H4.5a2.25 2.25 0 0 0-2.25 2.25v8.5c0 1.242 1.008 2.25 2.25 2.25h6.75c.207 0 .402-.066.562-.182a.75.75 0 0 0 .25-.568V2.75c0-.175-.083-.342-.25-.458Zm.438 12.082-.313.236H4.5a.75.75 0 0 1-.75-.75V4.5a.75.75 0 0 1 .75-.75h6.438l.313.236v10.617Z"/>' +
-                '</svg>Détails</a>';
+                '<span class="svg-icon svg-icon-2">' +
+                '<span class="ki ki-eye"></span>' +
+                '</span>' +
+                '</a>';
 
-            rows += '<tr class="transition-colors hover:bg-anapec-50/40">' +
-                '<td class="px-4 py-3 text-sm font-medium text-gray-900">' + esc(u.name) + '</td>' +
-                '<td class="px-4 py-3 text-sm text-gray-600">' + esc(u.email) + '</td>' +
-                '<td class="px-4 py-3">' + roleBadge(u.role) + '</td>' +
-                '<td class="px-4 py-3">' + statusBadge(u.is_active === true) + '</td>' +
-                '<td class="px-4 py-3 text-right">' + actionsHtml + '</td></tr>';
+            var deleteBtn = '<button type="button" ' +
+                'class="btn btn-icon btn-active-light-danger w-30px h-30px" ' +
+                'data-user-id="' + esc(u.id) + '" ' +
+                'data-user-name="' + esc(u.name) + '" ' +
+                'data-user-email="' + esc(u.email) + '" ' +
+                'title="Supprimer" aria-label="Supprimer ' + esc(u.name) + '">' +
+                '<span class="svg-icon svg-icon-2">' +
+                '<span class="ki ki-trash"></span>' +
+                '</span>' +
+                '</button>';
+
+            var actionsHtml = viewBtn + deleteBtn;
+
+            rows += '<tr>' +
+                '<td class="px-6 py-4 text-gray-800">' + esc(u.name) + '</td>' +
+                '<td class="px-6 py-4 text-gray-600">' + esc(u.email) + '</td>' +
+                '<td class="px-6 py-4">' + roleBadge(u.role) + '</td>' +
+                '<td class="px-6 py-4">' + statusBadge(u.is_active === true) + '</td>' +
+                '<td class="px-6 py-4 text-end">' + actionsHtml + '</td></tr>';
         }
 
         if (count === 0) {
@@ -346,11 +413,6 @@
 
         showTable();
         tbody.innerHTML = rows;
-
-        // Wire up detail links to the real user id.
-        tbody.querySelectorAll('[data-user-id]').forEach(function (a) {
-            a.setAttribute('href', '/admin/users/' + a.getAttribute('data-user-id'));
-        });
     }
 
     function showLoadError() {
@@ -365,7 +427,7 @@
         tbody.innerHTML = '';
     }
 
-    // ── Auth gate ──
+    // "?" "?" Auth gate "?" "?"
     get('/api/v1/auth/me')
         .then(function (res) {
             if (res.status === 401) {
@@ -432,7 +494,7 @@
             });
     }
 
-    // ── Search ──
+    // "?" "?" Search "?" "?"
     var search = document.getElementById('user-search');
     if (search) {
         search.addEventListener('input', function () {
@@ -440,7 +502,7 @@
         });
     }
 
-    // ── Retry ──
+    // "?" "?" Retry "?" "?"
     var retry = document.getElementById('btn-retry');
     if (retry) {
         retry.addEventListener('click', function () {
@@ -448,9 +510,7 @@
         });
     }
 
-    // ════════════════════════════════════════════════════
-    //  CREATE USER MODAL
-    // ════════════════════════════════════════════════════
+    // "?" "?" CREATE USER MODAL "?" "?"
     var btnNew = document.getElementById('btn-new-user');
     var modal = document.getElementById('user-modal');
     var backdrop = document.getElementById('user-modal-backdrop');
@@ -672,6 +732,104 @@
                 });
         });
     }
+
+    // "?" "?" DELETE USER MODAL "?" "?"
+    var deleteModal = document.getElementById('user-delete-modal');
+    var deleteBtn = document.getElementById('btn-delete-user-submit');
+    var deleteText = document.getElementById('btn-delete-user-text');
+    var deleteSpinner = document.getElementById('btn-delete-user-spinner');
+    var deleting = false;
+    var deleteUserId = null;
+    var deleteLastFocused = null;
+
+    function openDeleteModal(id, name, email) {
+        deleteUserId = id;
+        deleteLastFocused = document.activeElement;
+        document.getElementById('user-delete-name-display').textContent = name;
+        document.getElementById('user-delete-email-display').textContent = email;
+        document.getElementById('user-delete-modal-error').classList.add('hidden');
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('btn-delete-user-submit').focus();
+    }
+
+    function closeDeleteModal(force) {
+        if (deleting && !force) return;
+        deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
+        document.body.style.overflow = '';
+        deleteUserId = null;
+        if (deleteLastFocused && deleteLastFocused.focus) deleteLastFocused.focus();
+    }
+
+    document.getElementById('user-delete-modal-close').addEventListener('click', closeDeleteModal);
+    document.getElementById('user-delete-modal-cancel').addEventListener('click', closeDeleteModal);
+    document.getElementById('user-delete-modal-backdrop').addEventListener('click', closeDeleteModal);
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !deleteModal.classList.contains('hidden')) closeDeleteModal();
+    });
+
+    // Delegate delete button clicks from table rows
+    if (tbody) {
+        tbody.addEventListener('click', function (e) {
+            var target = e.target.closest('[data-user-id]');
+            if (!target) return;
+            var id = target.getAttribute('data-user-id');
+            var name = target.getAttribute('data-user-name');
+            var email = target.getAttribute('data-user-email');
+            openDeleteModal(id, name, email);
+        });
+    }
+
+    deleteBtn.addEventListener('click', function () {
+        if (deleting || !deleteUserId) return;
+
+        var api = window.apiClient;
+        if (!api) {
+            document.getElementById('user-delete-modal-error').textContent = 'Client API introuvable.';
+            document.getElementById('user-delete-modal-error').classList.remove('hidden');
+            return;
+        }
+
+        var id = deleteUserId;
+        deleting = true;
+        deleteBtn.disabled = true;
+        deleteSpinner.classList.remove('hidden');
+        deleteText.textContent = 'Suppression...';
+
+        api['delete']('/admin/users/' + id)
+            .then(function () {
+                deleting = false;
+                deleteBtn.disabled = false;
+                deleteSpinner.classList.add('hidden');
+                deleteText.textContent = 'Supprimer';
+                closeDeleteModal(true);
+                showSuccess('Utilisateur supprimé avec succès.');
+                loadUsers();
+            })
+            .catch(function (err) {
+                deleting = false;
+                deleteBtn.disabled = false;
+                deleteSpinner.classList.add('hidden');
+                deleteText.textContent = 'Supprimer';
+                var status = err.status || (err.response ? err.response.status : null);
+                var body = err.body || (err.response ? err.response.data : null);
+                if (status === 401) {
+                    localStorage.removeItem('anapec_token');
+                    localStorage.removeItem('anapec_user');
+                    window.location.href = '/login';
+                    return;
+                }
+                var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                if (status === 403) msg = 'Accès non autorisé.';
+                else if (status === 404) msg = 'Utilisateur introuvable.';
+                else if (body && body.message) msg = body.message;
+                document.getElementById('user-delete-modal-error').textContent = msg;
+                document.getElementById('user-delete-modal-error').classList.remove('hidden');
+            });
+    });
 })();
 </script>
 @endsection
