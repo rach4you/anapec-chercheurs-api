@@ -150,7 +150,8 @@
         // For non-admins /admin/* and /user/* paths are stripped (see the
         // filter below).
         var SERVICE_OPERATIONS = {
-            'WS_CHECK_CIN': ['/services/check-cin']
+            'WS_CHECK_CIN': ['/services/check-cin'],
+            'WS_INSCRIPTION': ['/services/inscription']
         };
 
         function collectServicePaths(allowed) {

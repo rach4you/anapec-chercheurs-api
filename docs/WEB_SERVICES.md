@@ -71,3 +71,4 @@ When an admin turns a Web Service globally OFF:
 | WS_PROFILE | Profile | Return a researcher profile |
 | WS_CV | CV | Return a researcher CV |
 | WS_BILAN | Bilan | Return a researcher bilan |
+| WS_INSCRIPTION | Researcher Registration | Fully register a researcher with diplomas, experiences, languages, permis, mobilites, bureautiques and jobs |

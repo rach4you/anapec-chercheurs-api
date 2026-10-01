@@ -45,9 +45,9 @@ class WebServiceFactory extends Factory
     }
 
     /**
-     * Use one of the four known initial Web Services.
+     * Use one of the known initial Web Services.
      *
-     * @param  string  $code  WS_CHECK_CIN | WS_PROFILE | WS_CV | WS_BILAN
+     * @param  string  $code  WS_CHECK_CIN | WS_PROFILE | WS_CV | WS_BILAN | WS_INSCRIPTION
      */
     public function withCode(string $code): static
     {

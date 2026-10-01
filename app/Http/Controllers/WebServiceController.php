@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\CreateWebServiceRequest;
 use App\Http\Requests\Admin\ToggleWebServiceStatusRequest;
 use App\Http\Requests\Admin\UpdateWebServiceRequest;
 use App\Http\Resources\WebServiceResource;
 use App\Models\WebService;
+use App\Models\WebServiceDomain;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class WebServiceController extends ApiJsonController
 {
@@ -28,6 +31,44 @@ class WebServiceController extends ApiJsonController
         $service = WebService::query()->where('code', $code)->with('domains')->firstOrFail();
 
         return $this->success('Web Service retrieved.', new WebServiceResource($service));
+    }
+
+    /**
+     * Create a new Web Service (admin-only).
+     *
+     * Optionally attaches the new service to one or more existing domains.
+     * A service with no domain membership is allowed; domain assignment
+     * can always be managed later through the Domain services endpoint.
+     */
+    public function store(CreateWebServiceRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $service = DB::transaction(function () use ($validated) {
+            $service = WebService::query()->create([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
+
+            $domainCodes = $validated['domain_codes'] ?? [];
+
+            if (!empty($domainCodes)) {
+                $domainIds = WebServiceDomain::query()
+                    ->whereIn('code', $domainCodes)
+                    ->pluck('id')
+                    ->all();
+
+                foreach ($domainIds as $domainId) {
+                    $service->domains()->attach($domainId);
+                }
+            }
+
+            return $service->fresh()->load('domains');
+        });
+
+        return $this->success('Web Service created.', new WebServiceResource($service), 201);
     }
 
     /**

@@ -69,7 +69,7 @@ class WebServiceDomainManagementTest extends TestCase
             ->getJson('/api/v1/admin/domains/CHERCHEURS')
             ->assertOk()
             ->assertJsonPath('data.code', 'CHERCHEURS')
-            ->assertJsonCount(4, 'data.web_services');
+            ->assertJsonCount(5, 'data.web_services');
     }
 
     // --- 3. Regular user cannot list domains ---
@@ -261,7 +261,7 @@ class WebServiceDomainManagementTest extends TestCase
             ->putJson('/api/v1/admin/domains/CHERCHEURS/services', ['web_services' => ['WS_NOPE']])
             ->assertUnprocessable();
 
-        $this->assertSame(4, $this->domain('CHERCHEURS')->webServices()->count());
+        $this->assertSame(5, $this->domain('CHERCHEURS')->webServices()->count());
     }
 
     // --- 18. Duplicate service codes are deduped ---

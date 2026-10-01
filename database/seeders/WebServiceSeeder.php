@@ -33,6 +33,11 @@ class WebServiceSeeder extends Seeder
                 'name' => 'Career Balance',
                 'description' => 'Retrieve a summary / career balance for a researcher.',
             ],
+            [
+                'code' => 'WS_INSCRIPTION',
+                'name' => 'Researcher Registration',
+                'description' => 'Fully register a researcher together with diplomas, experiences, languages, permis, mobilites, bureautiques and jobs.',
+            ],
         ];
 
         foreach ($services as $service) {

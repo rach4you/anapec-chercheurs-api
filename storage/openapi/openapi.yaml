@@ -1036,6 +1036,300 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /services/inscription:
+    post:
+      tags: [Services]
+      summary: Fully register a new researcher
+      description: |
+        Inserts a researcher in SIGEC `CHERCHEURS` and all related tables
+        inside a single DB transaction. Every insert is rolled back if any
+        step fails — no partial data ever survives.
+
+        Protected by:
+        - `auth:api` (Sanctum)
+        - `ws:WS_INSCRIPTION` (permission middleware)
+        - `throttle:60,1` (rate limit: 60 requests/minute)
+
+        Global access rule: the user must have WS_INSCRIPTION enabled in
+        `api_user_web_services` AND the global `api_web_services.is_active`
+        must be `true`. Otherwise returns 403.
+
+        The server generates the `CHERCHEUR_ID` from the SIGEC sequence
+        (via the `TRIG_CHERCEUR` trigger). Any client-supplied `chercheur_id`
+        or `id` field is silently stripped.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chercheur]
+              properties:
+                chercheur:
+                  type: object
+                  required:
+                    - nationalite
+                    - cin
+                    - password
+                    - nom_candidat
+                    - prenom
+                    - sexe
+                    - situation_familiale
+                    - date_naissance
+                    - adresse
+                    - ville_id
+                    - commune_id
+                    - e_mail
+                    - n_gsm
+                    - situation_p_r_emploi
+                  properties:
+                    nationalite: { type: integer, example: 0 }
+                    cin:
+                      type: string
+                      minLength: 2
+                      maxLength: 15
+                      example: "BJ5556"
+                    password:
+                      type: string
+                      minLength: 6
+                      maxLength: 30
+                      example: "123456"
+                    nom_candidat: { type: string, maxLength: 50, example: "rachid" }
+                    prenom: { type: string, maxLength: 50, example: "lahmami" }
+                    sexe: { type: string, maxLength: 50, example: "M" }
+                    situation_familiale: { type: string, maxLength: 50, example: "Célibataire" }
+                    date_naissance:
+                      type: string
+                      format: date
+                      description: Expected format `dd-mm-yyyy`.
+                      example: "18-09-1996"
+                    adresse: { type: string, maxLength: 500, example: "Anapec 4 lotissement la colline" }
+                    ville_id: { type: integer, example: 11 }
+                    commune_id: { type: integer, example: 7728 }
+                    e_mail: { type: string, format: email, maxLength: 100, example: "rachidlahmami@gmail.com" }
+                    n_gsm: { type: string, maxLength: 50, example: "0656565656" }
+                    situation_p_r_emploi: { type: string, maxLength: 50, example: "Sans emploi" }
+                    n_gsm2: { type: string, maxLength: 50, example: "0454545454" }
+                    tel: { type: string, maxLength: 50, example: "0455445454" }
+                    mois_chomage: { type: string, maxLength: 2, example: "4" }
+                    duree_chomage: { type: string, maxLength: 10, example: "2015" }
+                    handicape: { type: string, maxLength: 10, example: "oui" }
+                    nature_handicape: { type: string, maxLength: 50, example: "Aveugle" }
+                    competences_specifiques: { type: string, maxLength: 4000 }
+                    activites_extra_pro: { type: string, maxLength: 500 }
+                    date_inscription:
+                      type: string
+                      format: date
+                      description: Optional. Server always overwrites with the current date.
+                    date_derniere_actualisation:
+                      type: string
+                      format: date
+                      description: Optional. Server always overwrites with the current date.
+                    provenance: { type: string, maxLength: 2, example: "F" }
+                    agence_id: { type: integer, example: 123 }
+                    is_diplome: { type: integer, enum: [0, 1], example: 1 }
+                mobilites:
+                  type: array
+                  description: mobilite_id values stored in `chercheurs_mobilites`.
+                  items: { type: integer, example: 1 }
+                diplomes:
+                  type: array
+                  description: Rows written to `avoir_diplomes`.
+                  items:
+                    type: object
+                    required: [diplome_id, specialite_id, option_diplome_id, groupe_etablissement_id, etablissement_id, date_optention, commentaire]
+                    properties:
+                      diplome_id: { type: integer, example: 31 }
+                      specialite_id: { type: integer, example: 31295 }
+                      option_diplome_id: { type: integer, example: 312951587 }
+                      groupe_etablissement_id: { type: integer, example: 10 }
+                      etablissement_id: { type: integer, example: 723 }
+                      date_optention: { type: string, maxLength: 20, example: "2018" }
+                      commentaire: { type: string, maxLength: 500, example: "BAC+2 TEST COMENTAIRE" }
+                experiences:
+                  type: array
+                  description: Rows written to `experience_proffes`.
+                  items:
+                    type: object
+                    required: [date_debut, ce_jour, employeur, intitule_poste, duree_experience_id]
+                    properties:
+                      date_debut: { type: string, format: date, example: "01-09-2023" }
+                      date_fin: { type: string, format: date, nullable: true, example: "19-09-2024" }
+                      ce_jour: { type: integer, enum: [0, 1], example: 1 }
+                      employeur: { type: string, maxLength: 200, example: "ANAPEC" }
+                      intitule_poste: { type: string, maxLength: 150, example: "DEVELOPPEUR" }
+                      commentaire: { type: string, maxLength: 400, nullable: true }
+                      duree_experience_id: { type: integer, example: 4 }
+                bureautiques:
+                  type: array
+                  description: bureautique_id values stored in `bureautiques_chercheurs`.
+                  items: { type: integer, example: 1 }
+                permis:
+                  type: array
+                  description: permi_conduire_id values stored in `avoir_permis`.
+                  items: { type: integer, example: 3 }
+                langues:
+                  type: array
+                  description: |
+                    Rows written to `langues_parlees`. Duplicate
+                    `competence_linguistique_id` values in the same request
+                    are silently collapsed to a single row (first wins).
+                  items:
+                    type: object
+                    required: [competence_linguistique_id, niveau]
+                    properties:
+                      competence_linguistique_id: { type: integer, example: 1 }
+                      niveau: { type: string, maxLength: 50, example: "Courant" }
+                emplois_metiers:
+                  type: array
+                  description: Rows written to `chercher_emplois`.
+                  items:
+                    type: object
+                    required: [emploi_metier_id]
+                    properties:
+                      emploi_metier_id: { type: integer, example: 47141 }
+            example:
+              chercheur:
+                nationalite: 0
+                cin: "BJ5556"
+                password: "123456"
+                nom_candidat: "rachid"
+                prenom: "lahmami"
+                sexe: "M"
+                situation_familiale: "Célibataire"
+                date_naissance: "18-09-1996"
+                adresse: "Anapec 4 lotissement la colline"
+                ville_id: 11
+                commune_id: 7728
+                e_mail: "rachidlahmami@gmail.com"
+                n_gsm: "0656565656"
+                n_gsm2: "0454545454"
+                tel: "0455445454"
+                situation_p_r_emploi: "Sans emploi"
+                mois_chomage: "4"
+                duree_chomage: "2015"
+                handicape: "oui"
+                nature_handicape: "Aveugle"
+                competences_specifiques: "PhotoShop, DreamWeaver, Flash"
+                activites_extra_pro: "DEVELOPPEUR SENIOR DATA BASE ORACLE"
+                date_inscription: "23-09-2026"
+                date_derniere_actualisation: "23-09-2026"
+                provenance: "F"
+                agence_id: 123
+                is_diplome: 1
+              mobilites: [1, 2, 3, 4]
+              diplomes:
+                - diplome_id: 31
+                  specialite_id: 31295
+                  option_diplome_id: 312951587
+                  groupe_etablissement_id: 10
+                  etablissement_id: 723
+                  date_optention: "2018"
+                  commentaire: "BAC+2 TEST COMENTAIRE"
+                - diplome_id: 33
+                  specialite_id: 33452
+                  option_diplome_id: 334521520
+                  groupe_etablissement_id: 17
+                  etablissement_id: 731
+                  date_optention: "2017"
+                  commentaire: "BAC+4 TEST COMENTAIRE"
+              experiences:
+                - date_debut: "01-09-2023"
+                  date_fin: "19-09-2024"
+                  ce_jour: 0
+                  employeur: "ORACLE"
+                  intitule_poste: "DATA BASE ADMIN"
+                  commentaire: "TEST DATA BASE ADMIN EXP"
+                  duree_experience_id: 4
+                - date_debut: "11-09-2025"
+                  ce_jour: 1
+                  employeur: "ANAPEC"
+                  intitule_poste: "DEVELOPPEUR"
+                  commentaire: "TEST DEVELOPPEUR"
+                  duree_experience_id: 4
+              bureautiques: [1, 2, 3, 4]
+              permis: [3, 1, 2]
+              langues:
+                - competence_linguistique_id: 1
+                  niveau: "Courant"
+                - competence_linguistique_id: 4
+                  niveau: "Courant"
+                - competence_linguistique_id: 8
+                  niveau: "Moyen"
+              emplois_metiers:
+                - emploi_metier_id: 47141
+      responses:
+        '201':
+          description: Researcher and all relations created inside a single transaction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Chercheur enregistré avec succès." }
+                  data:
+                    type: object
+                    properties:
+                      chercheur_id:
+                        type: integer
+                        description: ID generated by the SIGEC sequence `chercheurs_seq`.
+                        example: 9651573
+                      cin: { type: string, example: "BJ5556" }
+                      email: { type: string, example: "rachidlahmami@gmail.com" }
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: "Chercheur enregistré avec succès."
+                    data:
+                      chercheur_id: 9651573
+                      cin: "BJ5556"
+                      email: "rachidlahmami@gmail.com"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            Forbidden when:
+            - WS_INSCRIPTION permission not assigned or disabled for the user
+            - WS_INSCRIPTION globally disabled
+            - User is inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: |
+            Duplicate identifier conflict. Two variants exist, disambiguated
+            by the `code` field:
+            - `CIN_ALREADY_EXISTS` — the CIN already exists in `CHERCHEURS`.
+            - `EMAIL_ALREADY_EXISTS` — the email already exists (case-insensitive).
+          content:
+            application/json:
+              examples:
+                cinDuplicate:
+                  summary: CIN already registered
+                  value:
+                    success: false
+                    message: "Un chercheur existe déjà avec ce CIN."
+                    code: "CIN_ALREADY_EXISTS"
+                emailDuplicate:
+                  summary: Email already registered
+                  value:
+                    success: false
+                    message: "Un chercheur existe déjà avec cet email."
+                    code: "EMAIL_ALREADY_EXISTS"
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          description: |
+            Unexpected internal error. If raised during the transaction, every
+            insert is rolled back — no CHERCHEURS row or relation rows survive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     BearerAuth:

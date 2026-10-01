@@ -36,7 +36,7 @@ class WebServiceManagementUiTest extends TestCase
         $this->actingAs($admin, 'api')
             ->getJson('/api/v1/admin/web-services')
             ->assertOk()
-            ->assertJsonCount(4, 'data')
+            ->assertJsonCount(5, 'data')
             ->assertJsonPath('data.0.code', 'WS_BILAN');
     }
 

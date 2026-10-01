@@ -512,6 +512,76 @@ Rate limit: 60 requests/minute.
 
 See `docs/services/WS_CHECK_CIN.md` for full details.
 
+### POST /api/v1/services/inscription
+
+```
+POST /api/v1/services/inscription
+Authorization: Bearer {token}
+```
+
+Requires: WS_INSCRIPTION permission enabled + WS_INSCRIPTION globally active + user active.
+
+Fills `CHERCHEURS` and all 7 associated tables inside a single DB transaction.
+Any failure rolls back every insert — no partial data survives.
+
+Required fields on `chercheur`:
+`nationalite`, `cin`, `password`, `nom_candidat`, `prenom`, `sexe`,
+`situation_familiale`, `date_naissance` (dd-mm-yyyy), `adresse`, `ville_id`,
+`commune_id`, `e_mail`, `n_gsm`, `situation_p_r_emploi`.
+
+Optional blocks: `mobilites`, `diplomes`, `experiences`, `bureautiques`,
+`permis`, `langues`, `emplois_metiers`.
+
+Server always overwrites `date_inscription` and `date_derniere_actualisation`
+with the current date. The server generates `chercheur_id` via the SIGEC
+sequence — any client-supplied `chercheur_id` is silently dropped.
+
+Response (201, success):
+```json
+{
+  "success": true,
+  "message": "Chercheur enregistré avec succès.",
+  "data": {
+    "chercheur_id": 9651573,
+    "cin": "BJ5556",
+    "email": "rachidlahmami@gmail.com"
+  }
+}
+```
+
+Response (409, duplicate CIN):
+```json
+{
+  "success": false,
+  "message": "Un chercheur existe déjà avec ce CIN.",
+  "code": "CIN_ALREADY_EXISTS"
+}
+```
+
+Response (409, duplicate email, case-insensitive):
+```json
+{
+  "success": false,
+  "message": "Un chercheur existe déjà avec cet email.",
+  "code": "EMAIL_ALREADY_EXISTS"
+}
+```
+
+Response (422, validation):
+```json
+{
+  "success": false,
+  "message": "The cin field is required.",
+  "errors": {
+    "chercheur.cin": ["Le champ cin est obligatoire."]
+  }
+}
+```
+
+Rate limit: 60 requests/minute.
+
+See `docs/services/WS_INSCRIPTION.md` for full details.
+
 ## Next Phase
 
 - Web service consumption endpoints (Profile, CV, Bilan)

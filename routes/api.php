@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Api\DocumentationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Services\CheckCinController;
+use App\Http\Controllers\Services\InscriptionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebServiceController;
 use App\Http\Controllers\WebServiceDomainController;
@@ -25,6 +26,9 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(['ws:WS_CHECK_CIN', 'throttle:60,1'])
             ->post('services/check-cin', [CheckCinController::class, 'check']);
 
+        Route::middleware(['ws:WS_INSCRIPTION', 'throttle:60,1'])
+            ->post('services/inscription', [InscriptionController::class, 'store']);
+
         Route::middleware(['can:admin'])->prefix('admin')->group(function (): void {
             Route::get('users', [AdminUserController::class, 'index']);
             Route::get('users/stats', [AdminUserController::class, 'stats']);
@@ -43,6 +47,7 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('users/{id}/domains/{code}', [AdminUserController::class, 'updateDomainPermission']);
 
             Route::get('web-services', [WebServiceController::class, 'index']);
+            Route::post('web-services', [WebServiceController::class, 'store']);
             Route::get('web-services/{code}', [WebServiceController::class, 'show']);
             Route::patch('web-services/{code}', [WebServiceController::class, 'update']);
             Route::patch('web-services/{code}/status', [WebServiceController::class, 'toggleStatus']);

@@ -33,6 +33,7 @@ class WebServiceDomainSeeder extends Seeder
             'WS_PROFILE',
             'WS_CV',
             'WS_BILAN',
+            'WS_INSCRIPTION',
         ];
 
         $services = WebService::query()

@@ -303,10 +303,12 @@
             'icon' => 'ki-folder',
         ],
     ];
-    $currentPath = request()->path();
+    // Request paths never carry a leading slash, so normalise both sides.
+    $currentPath = ltrim(request()->path(), '/');
     $activeNav = '';
     foreach ($navItems as $key => $item) {
-        if ($currentPath === $item['path'] || str_starts_with($currentPath, $item['path'])) {
+        $navPath = ltrim($item['path'], '/');
+        if ($currentPath === $navPath || str_starts_with($currentPath, $navPath)) {
             $activeNav = $key;
             break;
         }

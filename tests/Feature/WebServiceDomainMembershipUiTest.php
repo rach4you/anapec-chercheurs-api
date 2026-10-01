@@ -52,7 +52,7 @@ class WebServiceDomainMembershipUiTest extends TestCase
 
         $services = $response->json('data');
         $this->assertIsArray($services);
-        $this->assertCount(4, $services);
+        $this->assertCount(5, $services);
 
         foreach ($services as $service) {
             $this->assertArrayHasKey('domains', $service, 'Every service must expose a `domains` field.');
