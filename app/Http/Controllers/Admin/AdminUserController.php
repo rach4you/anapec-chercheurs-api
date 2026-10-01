@@ -22,6 +22,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AdminUserController extends ApiJsonController
 {
@@ -39,13 +40,14 @@ class AdminUserController extends ApiJsonController
      */
     public function index(Request $request): JsonResponse
     {
-        $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
+        $perPage = 10;
 
         $paginator = User::query()
             ->orderBy('name')
             ->when((string) $request->query('search', ''), function ($query, string $term) {
                 $query->where(function ($q) use ($term) {
-                    $like = '%'.addcslashes($term, '%_\\').'%';
+                    $like = '%' . addcslashes($term, '%_\\') . '%';
+
                     $q->where('name', 'like', $like)
                         ->orWhere('email', 'like', $like);
                 });
@@ -54,8 +56,10 @@ class AdminUserController extends ApiJsonController
                 switch ($status) {
                     case 'active':
                         return $query->where('is_active', true);
+
                     case 'inactive':
                         return $query->where('is_active', false);
+
                     default:
                         return $query;
                 }
@@ -67,9 +71,30 @@ class AdminUserController extends ApiJsonController
             ->values()
             ->all();
 
-        $paginated = array_merge($paginator->toArray(), ['data' => $items]);
+        $paginated = array_merge(
+            $paginator->toArray(),
+            ['data' => $items]
+        );
 
         return $this->success('Users retrieved.', $paginated);
+    }
+
+    /**
+     * Aggregate user statistics for the dashboard.
+     *
+     * Returns total / active / inactive counts computed directly from the
+     * database so the results are independent of the current paginated page.
+     */
+    public function stats(): JsonResponse
+    {
+        $total = User::query()->count();
+        $active = User::query()->where('is_active', true)->count();
+
+        return $this->success('User statistics retrieved.', [
+            'total' => $total,
+            'active' => $active,
+            'inactive' => $total - $active,
+        ]);
     }
 
     /**
@@ -104,6 +129,12 @@ class AdminUserController extends ApiJsonController
 
     /**
      * Create an API user.
+     *
+     * `access_scope` selects the Web Service permission model: "all" grants
+     * access to every ACTIVE Web Service in every domain (dynamically,
+     * including domains created later) without any per-service rows, and
+     * "selected" leaves access to the explicit `api_user_web_services`
+     * rows (default, backward compatible).
      */
     public function store(CreateUserRequest $request): JsonResponse
     {
@@ -113,15 +144,21 @@ class AdminUserController extends ApiJsonController
             'password' => $request->validated('password'),
             'role' => $request->validated('role', User::ROLE_USER),
             'is_active' => $request->validated('is_active', true),
+            'access_scope' => $request->validated('access_scope', User::ACCESS_SCOPE_SELECTED),
         ]);
 
         // The create form returns the full identity (with id) so the UI can
-        // follow up with a domain-assignment call in a second round trip.
+        // follow up with domain/service assignment calls in a second round trip.
         return $this->success('User created.', new UserResource($user->fresh()), 201);
     }
 
     /**
      * Update an API user.
+     *
+     * `access_scope` may change here: setting it to "all" also clears the
+     * per-service rows, because that mode must not depend on (or create)
+     * them. Reverting to "selected" restores access from whatever rows are
+     * created afterwards.
      */
     public function update(UpdateUserRequest $request, int $id): JsonResponse
     {
@@ -139,12 +176,30 @@ class AdminUserController extends ApiJsonController
             return $this->error('You cannot change your own role.', null, 403);
         }
 
-        $user->update([
-            'name' => $input['name'] ?? $user->name,
-            'email' => $input['email'] ?? $user->email,
-            'password' => $input['password'] ?? $user->password,
-            'role' => $input['role'] ?? $user->role,
-        ]);
+        $scope = $input['access_scope'] ?? $user->access_scope ?? User::ACCESS_SCOPE_SELECTED;
+
+        DB::transaction(function () use ($user, $input, $scope): void {
+            $attributes = [
+                'name' => $input['name'] ?? $user->name,
+                'email' => $input['email'] ?? $user->email,
+                'role' => $input['role'] ?? $user->role,
+                'access_scope' => $scope,
+            ];
+
+            // A missing password means "keep the current one"; a bcrypt hash is
+            // passed through unchanged.
+            if (array_key_exists('password', $input)
+                && Str::startsWith($input['password'], '$2y$') === false
+            ) {
+                $attributes['password'] = $input['password'];
+            }
+
+            $user->update($attributes);
+
+            if ($scope === User::ACCESS_SCOPE_ALL) {
+                UserWebService::query()->where('user_id', $user->id)->delete();
+            }
+        });
 
         return $this->success('User updated.', new UserResource($user->fresh()));
     }
@@ -199,7 +254,7 @@ class AdminUserController extends ApiJsonController
                     'name' => $state['name'],
                     'global_is_active' => $state['global_is_active'],
                     'is_enabled' => $state['is_enabled'],
-                    'domain_granted' => $state['domain_granted'],
+                    'access_scope' => $state['access_scope'],
                     'override_disabled' => $state['override_disabled'],
                     'grant_source' => $state['grant_source'],
                     'effective_access' => $state['effective_access'],
@@ -357,7 +412,7 @@ class AdminUserController extends ApiJsonController
             'description' => $state['description'],
             'global_is_active' => $state['global_is_active'],
             'is_enabled' => $state['is_enabled'],
-            'domain_granted' => $state['domain_granted'],
+            'access_scope' => $state['access_scope'],
             'override_disabled' => $state['override_disabled'],
             'grant_source' => $state['grant_source'],
             'effective_access' => $state['effective_access'],
@@ -410,6 +465,7 @@ class AdminUserController extends ApiJsonController
             ->values();
 
         return $this->success('Domains and effective Web Service states retrieved.', [
+            'access_scope' => $user->access_scope ?? User::ACCESS_SCOPE_SELECTED,
             'domains' => $rows,
             'web_services' => $services,
         ]);

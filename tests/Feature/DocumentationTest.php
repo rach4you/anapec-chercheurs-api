@@ -68,7 +68,7 @@ class DocumentationTest extends TestCase
 
         $props = $spec['components']['schemas']['UserWebServicePermission']['properties'] ?? [];
 
-        $this->assertArrayHasKey('domain_granted', $props, 'domain_granted is documented.');
+        $this->assertArrayHasKey('access_scope', $props, 'access_scope is documented.');
         $this->assertArrayHasKey('override_disabled', $props, 'override_disabled is documented.');
         $this->assertArrayHasKey('grant_source', $props, 'grant_source is documented.');
         $this->assertArrayHasKey('effective_access', $props, 'effective_access is documented.');

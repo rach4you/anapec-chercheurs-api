@@ -197,28 +197,21 @@ class WebServiceDomainUserPermissionTest extends TestCase
         $this->getJson("/api/v1/admin/users/{$user->id}/domains")->assertUnauthorized();
     }
 
-    // --- 10. Domain grant drives effective access (no direct row needed) ---
-    public function test_domain_grant_drives_effective_access(): void
+    // --- 10. Domain grants no longer expand into their services: a user
+    //     with access_scope "selected" needs explicit per-service rows ---
+    public function test_domain_grant_does_not_drive_service_access(): void
     {
         $admin = $this->admin();
         $user = $this->user();
 
-        // No direct permission yet.
         $this->assertFalse($user->canConsumeWebService('WS_CV'));
 
         $this->actingAs($admin, 'api')
             ->putJson("/api/v1/admin/users/{$user->id}/domains", ['domains' => ['CHERCHEURS']])
             ->assertOk();
 
-        // Domain contains WS_CV → the user now has effective access.
-        $this->assertTrue($user->fresh()->canConsumeWebService('WS_CV'));
-
-        // Remove the domain → access is revoked without touching any
-        // api_user_web_services row.
-        $this->actingAs($admin, 'api')
-            ->patchJson("/api/v1/admin/users/{$user->id}/domains/CHERCHEURS", ['is_enabled' => false])
-            ->assertOk();
-
+        // Domain grants are a UI grouping only: they do NOT expand into
+        // the domain's services. The user still has no effective access.
         $this->assertFalse($user->fresh()->canConsumeWebService('WS_CV'));
 
         // No direct permission row was ever created for WS_CV.

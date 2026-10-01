@@ -20,7 +20,7 @@ Route::get('admin/users', function () {
 })->name('admin.users');
 
 Route::get('admin/users/{id}', function ($id) {
-    return view('admin.user-detail', ['userId' => $id]);
+    return view('admin.users.show', ['userId' => $id]);
 })->where('id', '[0-9]+')->name('admin.users.show');
 
 Route::get('admin/web-services', function () {

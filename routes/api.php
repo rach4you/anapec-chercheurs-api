@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware(['can:admin'])->prefix('admin')->group(function (): void {
             Route::get('users', [AdminUserController::class, 'index']);
+            Route::get('users/stats', [AdminUserController::class, 'stats']);
             Route::get('users/create-scope', [AdminUserController::class, 'createScope']);
             Route::post('users', [AdminUserController::class, 'store']);
             Route::get('users/{id}', [AdminUserController::class, 'show']);

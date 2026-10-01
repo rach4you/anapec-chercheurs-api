@@ -127,9 +127,10 @@ paths:
         Returns ALL registered Web Services for the currently authenticated
         user only. No user_id parameter is accepted. effective_access is
         true when the user is active, the service is globally active, and
-        access is granted by a direct permission or an active domain —
-        unless an explicit disabled override row denies it.
-        domain_granted, override_disabled, and grant_source report how
+        access is granted by the global "all" scope or an explicitly
+        enabled direct permission row — unless an explicit disabled
+        override row denies it.
+        access_scope, override_disabled, and grant_source report how
         access is obtained.
       responses:
         '200':
@@ -1196,25 +1197,26 @@ components:
           type: boolean
           description: Whether the user holds a direct enabled permission row for this service.
           example: true
-        domain_granted:
-          type: boolean
-          description: Whether the service is granted via an active domain the user belongs to.
-          example: false
+        access_scope:
+          type: string
+          description: "The user's access scope: 'all' (every active service in every domain) or 'selected' (only explicitly enabled services)."
+          enum: [all, selected]
+          example: selected
         override_disabled:
           type: boolean
-          description: "Whether an explicit disabled override row denies access even if a domain grants it."
+          description: "Whether an explicit disabled override row denies access."
           example: false
         grant_source:
           type: string
-          description: "How access is obtained: domain, direct, override_disabled, or none."
-          enum: [domain, direct, override_disabled, none]
+          description: "How access is obtained: global, direct, or none."
+          enum: [global, direct, none]
           example: direct
         effective_access:
           type: boolean
           description: >
             Final access state computed server-side. True when the user is active, the service is
-            globally active, and either a direct enabled permission or an active domain grant
-            exists — unless an explicit disabled override row denies it.
+            globally active, and either the user has the global "all" access scope or an explicitly
+            enabled direct permission row exists — unless an explicit disabled override row denies it.
           example: true
 
     WebServiceDomain:

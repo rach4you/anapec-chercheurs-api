@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'role' => $this->role,
             'is_active' => $this->is_active,
+            'access_scope' => $this->access_scope ?? User::ACCESS_SCOPE_SELECTED,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

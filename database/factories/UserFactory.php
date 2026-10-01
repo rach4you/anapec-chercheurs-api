@@ -24,7 +24,28 @@ class UserFactory extends Factory
             'password' => Hash::make('password'),
             'role' => User::ROLE_USER,
             'is_active' => true,
+            'access_scope' => User::ACCESS_SCOPE_SELECTED,
         ];
+    }
+
+    /**
+     * Indicate that the user has the global ("all domains") Web Service scope.
+     */
+    public function withAllDomainsScope(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'access_scope' => User::ACCESS_SCOPE_ALL,
+        ]);
+    }
+
+    /**
+     * Indicate that the user has the "selected domains" Web Service scope.
+     */
+    public function withSelectedDomainsScope(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'access_scope' => User::ACCESS_SCOPE_SELECTED,
+        ]);
     }
 
     /**

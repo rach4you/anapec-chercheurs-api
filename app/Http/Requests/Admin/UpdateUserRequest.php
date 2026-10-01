@@ -20,6 +20,7 @@ class UpdateUserRequest extends FormRequest
             'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('api_users', 'email')->ignore($this->route('id'))],
             'password' => ['sometimes', 'string', 'min:8'],
             'role' => ['sometimes', 'string', Rule::in(User::allowedRoles())],
+            'access_scope' => ['sometimes', 'string', Rule::in(User::accessScopes())],
         ];
     }
 }

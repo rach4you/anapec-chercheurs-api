@@ -33,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'is_active',
+        'access_scope',
     ];
 
     /**
@@ -50,6 +51,28 @@ class User extends Authenticatable implements MustVerifyEmail
     public const ROLE_ADMIN = 'admin';
 
     public const ROLE_USER = 'user';
+
+    /**
+     * The user has access to ALL ACTIVE Web Services in ALL domains
+     * (including domains created later). No per-service rows required.
+     */
+    public const ACCESS_SCOPE_ALL = 'all';
+
+    /**
+     * The user has access only to the Web Services explicitly enabled in
+     * `api_user_web_services`.
+     */
+    public const ACCESS_SCOPE_SELECTED = 'selected';
+
+    /**
+     * The allowed values for {@see accessScope}.
+     *
+     * @return list<string>
+     */
+    public static function accessScopes(): array
+    {
+        return [self::ACCESS_SCOPE_ALL, self::ACCESS_SCOPE_SELECTED];
+    }
 
     /**
      * The roles a user may assume (allowed values).
@@ -92,6 +115,17 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Determine whether the user has global ("all domains") Web Service
+     * access. Such users reach every ACTIVE Web Service dynamically,
+     * including services in domains created later, without per-service
+     * permission rows.
+     */
+    public function hasGlobalAccessScope(): bool
+    {
+        return $this->access_scope === self::ACCESS_SCOPE_ALL;
+    }
+
+    /**
      * The web services associated with the user.
      *
      * @return BelongsToMany
@@ -122,38 +156,47 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * The Web Service codes the user is *configured* for, regardless of the
-     * current enabled state of the user, services or domains. This is the
-     * "configured access" indicator: it survives disabling and is restored
-     * on reactivation, so it intentionally ignores is_active flags.
+     * The Web Service codes the user is *configured* for. This is the
+     * "configured access" indicator shown by the admin list: it survives
+     * service inactivation and is effective again when the service is
+     * reactivated, so only the *service* is_active flag is ignored here.
+     *
+     * Semantics:
+     *   - scope "all": every ACTIVE Web Service in the catalog (dynamic: a
+     *     newly created active service is included automatically, with no
+     *     per-service permission row)
+     *   - scope "selected": the explicitly enabled rows from
+     *     `api_user_web_services` only. Selecting a domain groups the UI but
+     *     does NOT expand into its services on its own.
      *
      * @return \Illuminate\Support\Collection<int, string>
      */
     public function configuredServiceCodes(): \Illuminate\Support\Collection
     {
-        $direct = $this->webServices()
+        if ($this->hasGlobalAccessScope()) {
+            return WebService::query()
+                ->where('is_active', true)
+                ->pluck('code')
+                ->values();
+        }
+
+        return $this->webServices()
             ->wherePivot('is_enabled', true)
             ->pluck('api_web_services.code')
             ->values();
-
-        $viaDomain = $this->domains()
-            ->wherePivot('is_enabled', true)
-            ->with('webServices')
-            ->get()
-            ->flatMap(fn ($row) => $row->webServices->pluck('code'))
-            ->values();
-
-        return $direct->merge($viaDomain)->unique()->values();
     }
 
     /**
      * The Web Service codes the user can actually consume *right now*.
      *
-     * A configured service is effective only when the user is active AND the
-     * service is globally active AND an explicit disabled override row does
-     * not deny it. This mirrors {@see hasEffectiveAccessTo()} in bulk so the
-     * admin list page can display a single "effective access" indicator
-     * without one N+1 call per catalog service.
+     * A configured service is effective only when the user is active, the
+     * service is globally active, and an explicit disabled override row does
+     * not deny it. Disabling a service globally does not delete the
+     * configured permission: it becomes effective again on reactivation.
+     *
+     * This mirrors {@see hasEffectiveAccessTo()} in bulk so the admin list
+     * page can display a single "effective access" indicator without one
+     * N+1 call per catalog service.
      *
      * @return \Illuminate\Support\Collection<int, string>
      */
@@ -176,10 +219,16 @@ class User extends Authenticatable implements MustVerifyEmail
             ->all();
 
         return WebService::query()
-            ->whereIn('code', $configured->all())
+            ->where(function ($query) use ($configured) {
+                $query->whereIn('code', $configured->all());
+
+                if ($this->hasGlobalAccessScope()) {
+                    $query->orWhere('is_active', true);
+                }
+            })
+            ->whereNotIn('code', $overrides)
             ->where('is_active', true)
             ->pluck('code')
-            ->reject(fn (string $code) => in_array($code, $overrides, true))
             ->values();
     }
 
@@ -192,6 +241,16 @@ class User extends Authenticatable implements MustVerifyEmail
         $token = $this->tokens()->orderByDesc('last_used_at')->first();
 
         return $token?->last_used_at;
+    }
+
+    /**
+     * The total number of ACTIVE Web Services currently in the catalog.
+     * Used as the denominator of the "effective access" indicator on the
+     * admin user list.
+     */
+    public static function activeServiceCount(): int
+    {
+        return WebService::query()->where('is_active', true)->count();
     }
 
     /**
@@ -215,15 +274,12 @@ class User extends Authenticatable implements MustVerifyEmail
      * It combines, in order:
      *   1. the user must be active
      *   2. the Web Service must be globally active
-     *   3. an explicit disabled override row (`api_user_web_services.is_enabled
-     *      = false`) denies access even when a domain would grant it
-     *   4. access is granted when EITHER a direct enabled permission row
-     *      exists OR the user is granted (via an active domain) that
-     *      contains the service.
+     *   3. the user must hold either the global "all" scope or an enabled
+     *      direct permission row.
      *
-     * When no domain grants or overrides exist for the user the result is
-     * identical to the legacy "direct permission only" rule, so introducing
-     * domains is a strict no-op until an admin actually grants one.
+     * Selected domains act only as a UI grouping/scope for the individual
+     * Web Service checkboxes; they never expand into their whole service
+     * list on their own.
      */
     public function hasEffectiveAccessTo(WebService $service): bool
     {
@@ -235,27 +291,23 @@ class User extends Authenticatable implements MustVerifyEmail
             return false;
         }
 
-        $direct = $this->webServices()
+        // An explicit disabled override always wins — even over global scope.
+        $overrideRow = $this->webServices()
             ->where('api_web_services.code', $service->code)
+            ->wherePivot('is_enabled', false)
             ->first();
 
-        // An explicit disabled override always wins, even when a domain
-        // contains the service and grants it.
-        if ($direct !== null && ! $direct->pivot->is_enabled) {
+        if ($overrideRow) {
             return false;
         }
 
-        if ($direct !== null && $direct->pivot->is_enabled) {
+        if ($this->hasGlobalAccessScope()) {
             return true;
         }
 
-        // No direct row: fall back to the domain grant path. The service is
-        // globally active (checked above) and the user is active (checked
-        // above), so it is enough that an enabled, active domain contains it.
-        return $this->domains()
+        return $this->webServices()
             ->wherePivot('is_enabled', true)
-            ->wherePivot('api_web_service_domains.is_active', true)
-            ->whereHas('webServices', fn ($query) => $query->where('code', $service->code))
+            ->where('api_web_services.code', $service->code)
             ->exists();
     }
 
@@ -275,8 +327,8 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * The effective state of a Web Service for this user, as shown in the
      * user self-service and admin payloads. `grant_source` reports *how*
-     * access is obtained: `direct`, `domain`, `override_disabled`, or
-     * `none` when there is no access.
+     * access is obtained: `global` (the "all domains" scope), `direct`
+     * (an enabled permission row), or `none` when there is no access.
      */
     public function effectiveAccessState(WebService $service): array
     {
@@ -284,30 +336,24 @@ class User extends Authenticatable implements MustVerifyEmail
             ->where('api_web_services.code', $service->code)
             ->first();
 
-        $hasDomainGrant = $this->domains()
-            ->wherePivot('is_enabled', true)
-            ->wherePivot('api_web_service_domains.is_active', true)
-            ->whereHas('webServices', fn ($query) => $query->where('code', $service->code))
-            ->exists();
-
-        $overrideDisabled = $directRow !== null && ! $directRow->pivot->is_enabled;
-
         $directEnabled = $this->hasDirectPermissionFor($service);
-
+        $overrideDisabled = $directRow !== null && ! $directRow->pivot->is_enabled;
         $active = $this->isActive() && $service->is_active;
+        $globalScope = $this->hasGlobalAccessScope();
 
-        $effective = $active && ($directEnabled || ($hasDomainGrant && ! $overrideDisabled));
-
-        if (! $active) {
-            $source = 'none';
-        } elseif ($overrideDisabled) {
-            $source = 'override_disabled';
-        } elseif ($directEnabled) {
-            $source = 'direct';
-        } elseif ($hasDomainGrant) {
-            $source = 'domain';
+        // An explicit disabled override always wins — even over global scope.
+        if ($overrideDisabled) {
+            $effective = false;
         } else {
+            $effective = $active && ($globalScope || $directEnabled);
+        }
+
+        if (! $effective) {
             $source = 'none';
+        } elseif ($globalScope) {
+            $source = 'global';
+        } else {
+            $source = 'direct';
         }
 
         return [
@@ -316,7 +362,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'description' => $service->description,
             'global_is_active' => $service->is_active,
             'is_enabled' => $directRow !== null ? (bool) $directRow->pivot->is_enabled : false,
-            'domain_granted' => $hasDomainGrant,
+            'access_scope' => $this->access_scope ?? self::ACCESS_SCOPE_SELECTED,
             'override_disabled' => $overrideDisabled,
             'grant_source' => $source,
             'effective_access' => $effective,

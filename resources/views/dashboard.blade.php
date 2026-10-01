@@ -111,7 +111,7 @@
     </div>
 
     {{-- Opérations --}}
-    <div id="card-ops" class="col-xl-3 col-md-6 col-sm-6" data-visibility="admin">
+{{--    <div id="card-ops" class="col-xl-3 col-md-6 col-sm-6" data-visibility="admin">
         <div class="card card-flush h-100">
             <div class="card-body p-5">
                 <div class="d-flex justify-content-between flex-wrap">
@@ -128,7 +128,7 @@
                 <p class="text-gray-600 fw-bold fs-7 mb-0 mt-1">Activité API récente</p>
             </div>
         </div>
-    </div>
+    </div>--}}
 
 </div>
 
@@ -484,15 +484,39 @@
         var p1 = api.get('/api/v1/admin/users').then(function (res) {
             if (!res.ok) { hideSkeleton('val-users', '--'); return null; }
             return res.json().then(function (data) {
-                if (data.success && Array.isArray(data.data)) {
-                    hideSkeleton('val-users', String(data.data.length));
-                    usersData = data.data;
-                    return data.data;
+                if (
+                    data.success &&
+                    data.data &&
+                    Array.isArray(data.data.data)
+                ) {
+                    hideSkeleton('val-users', String(data.data.total));
+
+                    usersData = data.data.data;
+
+                    return data.data.data;
                 }
+
                 hideSkeleton('val-users', '--');
                 return null;
             });
         }).catch(function () { hideSkeleton('val-users', '--'); return null; });
+
+        var p4 = api.get('/api/v1/admin/users/stats').then(function (res) {
+            if (!res.ok) return null;
+            return res.json().then(function (data) {
+                if (data.success && data.data) {
+                    var active = data.data.active;
+                    var inactive = data.data.inactive;
+                    var total = data.data.total;
+                    document.getElementById('stat-user-active').textContent = String(active);
+                    document.getElementById('stat-user-inactive').textContent = String(inactive);
+                    var userActivePct = total > 0 ? Math.round((active / total) * 100) : 0;
+                    document.getElementById('bar-user-active').style.width = userActivePct + '%';
+                    return true;
+                }
+                return null;
+            });
+        }).catch(function () { return null; });
 
         var p2 = api.get('/api/v1/admin/web-services').then(function (res) {
             if (!res.ok) {
@@ -529,16 +553,7 @@
             });
         }).catch(function () { hideSkeleton('val-domains', '--'); return null; });
 
-        Promise.all([p1, p2, p3]).then(function () {
-            if (usersData && Array.isArray(usersData)) {
-                var activeUsers = usersData.filter(function (u) { return u.is_active === true; }).length;
-                var inactiveUsers = usersData.length - activeUsers;
-                document.getElementById('stat-user-active').textContent = String(activeUsers);
-                document.getElementById('stat-user-inactive').textContent = String(inactiveUsers);
-                var totalUsers = usersData.length;
-                var userActivePct = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0;
-                document.getElementById('bar-user-active').style.width = userActivePct + '%';
-            }
+        Promise.all([p1, p2, p3, p4]).then(function () {
             if (servicesData && Array.isArray(servicesData)) {
                 var activeSvc = servicesData.filter(function (w) { return w.is_active === true; }).length;
                 var inactiveSvc = servicesData.length - activeSvc;

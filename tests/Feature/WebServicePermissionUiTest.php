@@ -22,16 +22,70 @@ class WebServicePermissionUiTest extends TestCase
 
     protected $connectionsToTransact = [null];
 
-    // The details route renders the permissions card and the per-service toggles.
+    // The details route renders through the same Metronic layout as the users
+    // list. This guards against the regression that put the page back on the
+    // legacy Tailwind layouts.app shell.
+    public function test_details_route_renders_the_metronic_layout(): void
+    {
+        $response = $this->get('/admin/users/1');
+
+        $response->assertOk();
+        $response->assertSee('kt_app_sidebar');
+        $response->assertSee('kt_app_header');
+        $response->assertSee('kt_app_content_container');
+        $response->assertSee('style.bundle.css');
+    }
+
+    // The legacy Tailwind shell must not come back on the details page.
+    public function test_details_route_does_not_use_the_legacy_app_layout(): void
+    {
+        $response = $this->get('/admin/users/1');
+
+        $response->assertOk();
+        $response->assertDontSee('id="app-sidebar"', false);
+        $response->assertDontSee('anapec-600', false);
+        $response->assertDontSee('fonts.bunny.net', false);
+    }
+
+    // The page renders the Metronic section shells: profile, access summary,
+    // the access list and the danger zone.
     public function test_details_route_renders_the_permissions_ui(): void
     {
         $response = $this->get('/admin/users/1');
 
         $response->assertOk();
-        $response->assertSee('permissions-card');
-        $response->assertSee('permissions-skeleton');
-        $response->assertSee('permissions-body');
-        $response->assertSee('btn-revoke-perms');
+        $response->assertSee('profile-card');
+        $response->assertSee('summary-card');
+        $response->assertSee('access-card');
+        $response->assertSee('access-body');
+        $response->assertSee('overrides-card');
+        $response->assertSee('danger-card');
+        $response->assertSee('btn-revoke-all');
+    }
+
+    // The access summary exposes the scope, effective and configured figures.
+    public function test_details_route_renders_the_access_summary(): void
+    {
+        $response = $this->get('/admin/users/1');
+
+        $response->assertOk();
+        $response->assertSee('summary-scope');
+        $response->assertSee('summary-effective');
+        $response->assertSee('summary-configured');
+    }
+
+    // The shared authorization / failure panels are present.
+    public function test_details_route_renders_the_state_panels(): void
+    {
+        $response = $this->get('/admin/users/1');
+
+        $response->assertOk();
+        $response->assertSee('auth-loading');
+        $response->assertSee('access-denied');
+        $response->assertSee('not-found');
+        $response->assertSee('load-error');
+        $response->assertSee('btn-retry');
+        $response->assertSee('toast');
     }
 
     // The revoke-all confirmation modal follows the existing modal pattern.

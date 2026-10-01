@@ -1,1289 +1,1230 @@
-@extends('layouts.app')
+@extends('layouts.metronic')
 
 @section('title', 'Détails utilisateur')
 
+@push('styles')
+    <style>
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex: 0 0 auto;
+            vertical-align: middle;
+        }
+
+        .switch input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .switch .track {
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            background-color: var(--bs-secondary, #6c757d);
+            transition: background-color 0.2s ease;
+        }
+
+        .switch .handle {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease;
+        }
+
+        .switch input:checked~.track {
+            background-color: var(--bs-primary, #1266f1);
+        }
+
+        .switch input:checked~.handle {
+            transform: translateX(20px);
+        }
+    </style>
+@endpush
+
 @section('content')
-<div id="admin-user-show-root" class="hidden">
-<div class="flex items-center justify-between gap-4">
-    <div>
-        <h2 class="text-lg font-semibold text-gray-900">Détails utilisateur</h2>
-        <p class="mt-0.5 text-sm text-gray-500">
-            Consultez et gérez les informations et les accès de cet utilisateur.
-        </p>
-    </div>
-    <a href="{{ route('admin.users') }}"
-       class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" clip-rule="evenodd"
-                  d="M12.79 5.23a.75.75 0 0 1-.09 1.04L8.832 9l3.868 2.73a.75.75 0 1 1-.95 1.148l-4.5-3.15a.75.75 0 0 1 0-1.248l4.5-3.15a.75.75 0 0 1 1.04.09Z"/>
-        </svg>
-        Retour aux utilisateurs
-    </a>
-</div>
-
-{{-- ── ACCESS DENIED (403 / non-admin) ── --}}
-<div id="access-denied" class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 p-6 text-center" role="alert">
-    <p class="text-sm font-medium text-red-800">Accès non autorisé.</p>
-    <p class="mt-1 text-sm text-red-600">
-        Vous devez être administrateur pour accéder à cette page.
-    </p>
-    <a href="{{ route('dashboard') }}" class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700">
-        Retour au Dashboard
-    </a>
-</div>
-
-{{-- ── 404 / NOT FOUND ── --}}
-<div id="not-found" class="mt-6 hidden rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
-    <p class="text-sm font-medium text-gray-800">Utilisateur introuvable.</p>
-    <p class="mt-1 text-sm text-gray-500">Cet utilisateur n'existe pas ou a été supprimé.</p>
-</div>
-
-{{-- ── LOAD ERROR + RETRY ── --}}
-<div id="load-error" class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 p-6 text-center" role="alert">
-    <p class="text-sm font-medium text-red-800">Impossible de charger les détails de l'utilisateur.</p>
-    <button id="btn-retry" type="button"
-            class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700">
-        Réessayer
-    </button>
-</div>
-
-{{-- ── USER INFORMATION CARD ── --}}
-<div id="user-info-card" class="mt-6 hidden rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-    <div class="flex items-center justify-between gap-4">
-        <h3 class="text-sm font-semibold text-gray-900">Informations de l'utilisateur</h3>
-        <div class="flex items-center gap-2">
-            <button type="button" id="btn-edit-user"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z"/>
-                </svg>
-                Modifier
+    {{-- ── PAGE HEADING ── --}}
+    <div class="d-flex flex-wrap align-items-center justify-content-start justify-content-between gap-4 mb-6 mb-xl-8">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{{ route('admin.users') }}"
+                class="btn btn-icon btn-light-primary btn-active-color-primary w-40px h-40px align-self-stretch d-flex flex-shrink-0"
+                title="Retour aux utilisateurs" aria-label="Retour aux utilisateurs">
+                <span class="svg-icon svg-icon-2 text-primary"><i class="ki-outline ki-arrow-left fs-2"></i></span>
+            </a>
+            <div class="symbol symbol-50px bg-light-primary bg-opacity-100 flex-shrink-0">
+                <span class="svg-icon svg-icon-2 text-primary"><i class="ki-outline ki-user fs-2"></i></span>
+            </div>
+            <div>
+                <h2 class="fw-bold text-dark fs-3 mb-0">Détails utilisateur</h2>
+                <p class="text-muted fs-6 mb-0">Consultez et gérez les informations et les accès de cet utilisateur.</p>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-3">
+            <button type="button" id="btn-reset-password" class="btn btn-light-secondary fw-semibold">
+                <span class="svg-icon svg-icon-2"><i class="ki-outline ki-locked"></i></span>
+                <span class="ms-2">Réinitialiser le mot de passe</span>
             </button>
-            <button type="button" id="btn-reset-password"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                          d="M9.5 2.5a.75.75 0 0 0-.75.75v.5a.75.75 0 0 0 1.5 0v-.5a.75.75 0 0 0-.75-.75Zm.75 5.25a.75.75 0 0 0-1.5 0v.5a.75.75 0 0 0 1.5 0v-.5Z"/>
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                          d="M8.75 4a.75.75 0 0 0-.5-.682A5.995 5.995 0 0 1 14.6 5.644a.75.75 0 0 0 1.5-.188A7.495 7.495 0 0 0 8.25 2.522a2.25 2.25 0 0 0-.5.682V4.75A2.25 2.25 0 0 0 10 7h2.25a.75.75 0 0 1 0 1.5h-2.25A2.25 2.25 0 0 1 7.75 6.25v1.125H5.5A.75.75 0 0 1 5.5 6.25v-2a.75.75 0 0 1 .75-.75h2.25v-.5Z"/>
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                          d="M15.75 10a.75.75 0 0 1 .75.75V11a2.75 2.75 0 0 0 0 5.5h2.75a.75.75 0 0 1 0 1.5H16.5A4.25 4.25 0 0 1 12.25 11v-.25a.75.75 0 0 1 .75-.75h2.75Z"/>
-                </svg>
-                Réinitialiser le mot de passe
+            <button type="button" id="btn-edit-user" class="btn btn-primary fw-semibold">
+                <span class="svg-icon svg-icon-2"><i class="ki-outline ki-edit"></i></span>
+                <span class="ms-2">Modifier</span>
             </button>
         </div>
     </div>
 
-    <dl class="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Nom</dt>
-            <dd id="detail-name" class="mt-1 text-sm font-medium text-gray-900">—</dd>
+    {{-- ── LOADING STATE ── --}}
+    <div id="auth-loading" class="alert alert-info d-none" role="status">
+        <div class="alert-body d-flex align-items-center">
+            <span class="spinner spinner-sm spinner-primary me-3"></span>
+            <div>
+                <h4 class="fs-6 fw-bolder text-dark mb-1">Vérification des accès</h4>
+                <p class="fs-7 text-gray-700 mb-0">Chargement des détails de l'utilisateur...</p>
+            </div>
         </div>
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Email</dt>
-            <dd id="detail-email" class="mt-1 text-sm font-medium text-gray-900">—</dd>
-        </div>
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Rôle</dt>
-            <dd id="detail-role" class="mt-1"></dd>
-        </div>
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Statut</dt>
-            <dd id="detail-status" class="mt-1"></dd>
-        </div>
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Date de création</dt>
-            <dd id="detail-created" class="mt-1 text-sm text-gray-700">—</dd>
-        </div>
-        <div>
-            <dt class="text-xs font-medium text-gray-500">Dernière modification</dt>
-            <dd id="detail-updated" class="mt-1 text-sm text-gray-700">—</dd>
-        </div>
-    </dl>
-</div>
-
-{{-- ── DOMAIN GRANTS ── --}}
-<div id="domains-card" class="mt-6 hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-    <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-        <h3 class="text-sm font-semibold text-gray-900">Domaines</h3>
-        <p class="text-xs text-gray-500">Accès par domaine (mécanisme par défaut)</p>
     </div>
-    <div id="domains-skeleton" class="px-6 py-4"></div>
-    <div id="domains-body" class="hidden px-6 py-4"></div>
-</div>
 
-{{-- ── WEB SERVICE PERMISSIONS ── --}}
-<div id="permissions-card" class="mt-6 hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-    <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-        <h3 class="text-sm font-semibold text-gray-900">Exceptions Web Services</h3>
-        <button type="button" id="btn-revoke-perms"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
-            Révoquer toutes les permissions
-        </button>
-    </div>
-    <div id="permissions-skeleton" class="px-6 py-4"></div>
-    <div id="permissions-body" class="hidden px-6 py-4"></div>
-</div>
-
-{{-- ── SUCCESS / ERROR TOAST ── --}}
-<div id="toast" class="fixed right-4 top-4 z-[60] hidden max-w-sm rounded-lg border px-4 py-3 shadow-sm"
-     role="status" aria-live="polite">
-    <p id="toast-msg" class="text-sm font-medium"></p>
-</div>
-
-{{-- ── EDIT USER MODAL ── --}}
-<div id="edit-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
-     role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
-    <div id="edit-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-xl sm:rounded-xl border border-gray-200 bg-white shadow-lg sm:m-4">
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-            <h3 id="edit-modal-title" class="text-base font-semibold text-gray-900">Modifier l'utilisateur</h3>
-            <button type="button" id="edit-modal-close" class="p-1 text-gray-400 transition-colors hover:text-gray-600" aria-label="Fermer">
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
-                </svg>
-            </button>
-        </div>
-        <div id="edit-form-error" class="mx-5 mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700" role="alert"></div>
-        <form id="edit-user-form" class="space-y-4 px-5 py-4" novalidate>
-            <div>
-                <label for="ed-name" class="block text-sm font-medium text-gray-700">Nom</label>
-                <input type="text" id="ed-name" name="name" required maxlength="255"
-                       class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500" />
-                <p id="err-ed-name" class="mt-1 text-xs text-red-600 hidden"></p>
-            </div>
-            <div>
-                <label for="ed-email" class="block text-sm font-medium text-gray-700">Email</label>
-                <input type="email" id="ed-email" name="email" required maxlength="255"
-                       class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500" autocomplete="email" />
-                <p id="err-ed-email" class="mt-1 text-xs text-red-600 hidden"></p>
-            </div>
-            <div>
-                <label for="ed-role" class="block text-sm font-medium text-gray-700">Rôle</label>
-                <select id="ed-role" name="role"
-                        class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500">
-                    <option value="user">Utilisateur</option>
-                    <option value="admin">Administrateur</option>
-                </select>
-                <p id="err-ed-role" class="mt-1 text-xs text-red-600 hidden"></p>
-            </div>
-            <div>
-                <label for="ed-active" class="flex items-center gap-2.5 text-sm font-medium text-gray-700">
-                    <input type="checkbox" id="ed-active" name="is_active"
-                           class="h-4 w-4 rounded border-gray-300 text-anapec-600 focus:ring-anapec-500" />
-                    Compte actif
-                </label>
-                <p id="err-ed-is_active" class="mt-1 text-xs text-red-600 hidden"></p>
-            </div>
-            <div class="flex items-center justify-end gap-2.5 pt-2">
-                <button type="button" id="edit-modal-cancel"
-                        class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-                    Annuler
-                </button>
-                <button type="submit" id="btn-save-user"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
-                    <span id="btn-save-user-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                    <span id="btn-save-user-text">Enregistrer</span>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{{-- ── PASSWORD RESET MODAL ── --}}
-<div id="password-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
-     role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
-    <div id="password-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-xl sm:rounded-xl border border-gray-200 bg-white shadow-lg sm:m-4">
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-            <h3 id="password-modal-title" class="text-base font-semibold text-gray-900">Réinitialiser le mot de passe</h3>
-            <button type="button" id="password-modal-close" class="p-1 text-gray-400 transition-colors hover:text-gray-600" aria-label="Fermer">
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
-                </svg>
-            </button>
-        </div>
-        <div id="password-form-error" class="mx-5 mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700" role="alert"></div>
-        <form id="password-reset-form" class="space-y-4 px-5 py-4" novalidate>
-            <div>
-                <label for="psw-new" class="block text-sm font-medium text-gray-700">Nouveau mot de passe</label>
-                <div class="relative mt-1">
-                    <input type="password" id="psw-new" name="password" required minlength="8"
-                           class="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500"
-                           placeholder="8 caractères minimum" autocomplete="new-password" />
-                    <button type="button" id="psw-toggle"
-                            class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
-                            aria-label="Afficher ou masquer le mot de passe">
-                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" clip-rule="evenodd"
-                                  d="M10 1.944a.75.75 0 0 1 .75.75v.554a.75.75 0 0 1-1.5 0V2.7a.75.75 0 0 1 .75-.756ZM2.25 9.75a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Zm14.5-.75h-2.5a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5ZM2.25 13.75a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Zm14.5-.75h-2.5a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5ZM10 10.75a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V11.5a.75.75 0 0 1 .75-.75Z"/>
-                        </svg>
-                    </button>
+    {{-- ── ACCESS DENIED (403 / non-admin) ── --}}
+    <div id="access-denied" class="alert alert-danger d-none" role="alert">
+        <div class="alert-body">
+            <div class="d-flex align-items-center">
+                <span class="svg-icon svg-icon-2x svg-icon-danger me-3"><i class="ki-outline ki-shield"></i></span>
+                <div>
+                    <h4 class="fs-6 fw-bolder text-danger mb-1">Accès non autorisé</h4>
+                    <p class="fs-7 text-gray-700 mb-0">Vous devez être administrateur pour consulter cette page.</p>
                 </div>
-                <p id="err-psw-new" class="mt-1 text-xs text-red-600 hidden"></p>
             </div>
+            <div class="alert-actions">
+                <a href="{{ route('dashboard') }}" class="btn btn-sm btn-light-danger">Retour au Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── 404 / NOT FOUND ── --}}
+    <div id="not-found" class="alert alert-light-secondary d-none" role="alert">
+        <div class="alert-body d-flex align-items-center">
+            <span class="svg-icon svg-icon-2x svg-icon-secondary me-3"><i class="ki-outline ki-search"></i></span>
             <div>
-                <label for="psw-confirm" class="block text-sm font-medium text-gray-700">Confirmation du mot de passe</label>
-                <input type="password" id="psw-confirm" name="password_confirmation" required minlength="8"
-                       class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-anapec-500 focus:outline-none focus:ring-1 focus:ring-anapec-500"
-                       placeholder="Retapez le mot de passe" autocomplete="new-password" />
-                <p id="err-psw-confirm" class="mt-1 text-xs text-red-600 hidden"></p>
+                <h4 class="fs-6 fw-bolder text-secondary mb-1">Utilisateur introuvable</h4>
+                <p class="fs-7 text-gray-700 mb-0">Cet utilisateur n'existe pas ou a été supprimé.</p>
             </div>
-            <div class="flex items-center justify-end gap-2.5 pt-2">
-                <button type="button" id="password-modal-cancel"
-                        class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-                    Annuler
-                </button>
-                <button type="submit" id="btn-reset-password"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
-                    <span id="btn-reset-password-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                    <span id="btn-reset-password-text">Réinitialiser</span>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{{-- ── CONFIRM REVOKE-ALL MODAL ── --}}
-<div id="revoke-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center"
-     role="dialog" aria-modal="true" aria-labelledby="revoke-modal-title">
-    <div id="revoke-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-xl sm:rounded-xl border border-gray-200 bg-white shadow-lg sm:m-4">
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-            <h3 id="revoke-modal-title" class="text-base font-semibold text-gray-900">Révoquer toutes les permissions</h3>
-            <button type="button" id="revoke-modal-close"
-                    class="p-1 text-gray-400 transition-colors hover:text-gray-600"
-                    aria-label="Fermer">
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
-                </svg>
-            </button>
-        </div>
-        <div class="space-y-4 px-5 py-4">
-            <p id="revoke-modal-message" class="text-sm text-gray-700"></p>
-            <div id="revoke-modal-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700"
-                 role="alert"></div>
-            <div class="flex items-center justify-end gap-2.5 pt-2">
-                <button type="button" id="revoke-modal-cancel"
-                        class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2">
-                    Annuler
-                </button>
-                <button type="button" id="btn-confirm-revoke"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
-                    <span id="btn-confirm-revoke-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                    <span id="btn-confirm-revoke-text">Révoquer</span>
-                </button>
+            <div class="alert-actions">
+                <a href="{{ route('admin.users') }}" class="btn btn-sm btn-light-secondary">Retour à la liste</a>
             </div>
         </div>
     </div>
-</div>
-</div>
 
-{{-- ── AUTHORIZATION LOADING STATE ── --}}
-<div id="auth-loading" class="mt-6 flex items-center justify-center rounded-lg border border-gray-200 bg-white p-10 shadow-sm">
-    <span class="inline-flex items-center gap-2 text-sm font-medium text-gray-500">
-        <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-anapec-600"></span>
-        Vérification des accès...
-    </span>
-</div>
+    {{-- ── LOAD ERROR + RETRY ── --}}
+    <div id="load-error" class="alert alert-danger d-none" role="alert">
+        <div class="alert-body">
+            <div class="d-flex align-items-center">
+                <span class="svg-icon svg-icon-2x svg-icon-danger me-3"><i class="ki-outline ki-cloud-off"></i></span>
+                <div>
+                    <h4 class="fs-6 fw-bolder text-danger mb-1">Impossible de charger les détails</h4>
+                    <p class="fs-7 text-gray-700 mb-0">Vérifiez votre connexion et réessayez.</p>
+                </div>
+            </div>
+            <div class="alert-actions">
+                <button type="button" id="btn-retry" class="btn btn-sm btn-light-danger">Réessayer</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── MAIN CONTENT (hidden until loaded) ── --}}
+    <div id="detail-root" class="d-none">
+        {{-- ── 1. USER PROFILE CARD ── --}}
+        <div class="card card-flush mb-6 mb-xl-8" id="profile-card">
+            <div class="card-body p-6 p-md-8">
+                <div class="d-flex flex-wrap align-items-start flex-column flex-md-row gap-5 gap-md-0 w-100">
+                    <div class="d-flex flex-column align-items-center mb-5 mb-md-0">
+                        <div id="profile-avatar" class="symbol symbol-100px mb-3">
+                            <span id="profile-avatar-label" class="symbol-label text-start fs-3 fw-bolder">—</span>
+                        </div>
+                        <div id="profile-badges" class="d-flex flex-wrap justify-content-center gap-2"></div>
+                    </div>
+                    <div class="flex-grow-1 d-flex flex-column justify-content-center">
+                        <h3 id="profile-name" class="fw-bold text-dark fs-2 mb-1">—</h3>
+                        <div class="d-flex align-items-center text-muted fs-6 mb-5">
+                            <span class="svg-icon svg-icon-2 me-2"><i class="ki-outline ki-email"></i></span>
+                            <span id="profile-email">—</span>
+                        </div>
+                        <div class="row g-4" id="profile-meta">
+                            <div class="col-sm-6 col-lg-3">
+                                <span class="text-muted fs-7 d-block mb-1">Rôle</span>
+                                <div id="profile-role"></div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <span class="text-muted fs-7 d-block mb-1">Statut</span>
+                                <div id="profile-status"></div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <span class="text-muted fs-7 d-block mb-1">Créé le</span>
+                                <span id="profile-created" class="text-dark fs-7 fw-semibold">—</span>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <span class="text-muted fs-7 d-block mb-1">Modifié le</span>
+                                <span id="profile-updated" class="text-dark fs-7 fw-semibold">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── 2. ACCESS SUMMARY ── --}}
+        <div class="card card-flush mb-6 mb-xl-8" id="summary-card">
+            <div class="card-header border-0">
+                <h3 class="card-title fw-bold text-dark fs-4">
+                    <span class="svg-icon svg-icon-2 text-primary me-2"><i class="ki-outline ki-shield"></i></span>
+                    Résumé des accès Web Services
+                </h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="row g-0" id="summary-grid">
+                    <div class="col-12 col-md-4 border-end border-bottom border-md-end-0 border-md-bottom border-gray-200">
+                        <div class="p-6">
+                            <span class="text-muted fs-7 d-block mb-2">Portée d'accès</span>
+                            <div id="summary-scope" class="mb-2">
+                                <span class="text-muted fs-6">—</span>
+                            </div>
+                            <span id="summary-scope-help" class="text-muted fs-7 d-block"></span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4 border-bottom border-md-bottom-0 border-gray-200">
+                        <div class="p-6">
+                            <span class="text-muted fs-7 d-block mb-2">Accès effectif</span>
+                            <span class="fs-3 fw-bolder text-success" id="summary-effective">—</span>
+                            <span class="text-muted fs-7 d-block mt-1" id="summary-effective-help">—</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="p-6">
+                            <span class="text-muted fs-7 d-block mb-2">Services configurés</span>
+                            <span class="fs-3 fw-bolder text-primary" id="summary-configured">—</span>
+                            <span class="text-muted fs-7 d-block mt-1" id="summary-configured-help">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── 3. ACCESS BY DOMAIN ── --}}
+        <div class="card card-flush mb-6 mb-xl-8" id="access-card">
+            <div class="card-header border-0">
+                <h3 class="card-title fw-bold text-dark fs-4">
+                    <span class="svg-icon svg-icon-2 text-primary me-2"><i class="ki-outline ki-folder"></i></span>
+                    Accès par domaine
+                </h3>
+                <div class="card-toolbar d-flex align-items-center gap-3">
+                    <span class="text-muted fs-7" id="access-legend-note">
+                        La source indique d'où vient l'accès, pas seulement s'il existe.
+                    </span>
+                </div>
+            </div>
+            <div class="card-body p-0" id="access-body"></div>
+        </div>
+
+        {{-- ── 4. OVERRIDES / EXCEPTIONS ── --}}
+        <div class="card card-flush mb-6 mb-xl-8 d-none" id="overrides-card">
+            <div class="card-header border-0">
+                <h3 class="card-title fw-bold text-dark fs-4">
+                    <span class="svg-icon svg-icon-2 text-warning me-2"><i class="ki-outline ki-alert"></i></span>
+                    Exceptions Web Services
+                </h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="alert alert-light-warning mx-6 my-6 mb-0" style="border:0;border-radius:0.5rem">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="svg-icon svg-icon-2x svg-icon-warning flex-shrink-0">
+                            <i class="ki-outline ki-info"></i>
+                        </span>
+                        <div class="fs-7 text-gray-700">
+                            Une exception désactive un Web Service pour cet utilisateur, même quand la portée d'accès
+                            « tous les services » s'appliquerait normalement.
+                        </div>
+                    </div>
+                </div>
+                <div id="overrides-body"></div>
+            </div>
+        </div>
+
+        {{-- ── 5. DANGER ZONE ── --}}
+        <div class="card card-flush mb-6 mb-xl-8" id="danger-card"
+            style="border:1px solid var(--bs-danger, #dc3545)">
+            <div class="card-header border-0" style="border-bottom:1px solid var(--bs-danger, #dc3545)">
+                <h3 class="card-title fw-bold text-danger fs-4">
+                    <span class="svg-icon svg-icon-2 text-danger me-2"><i class="ki-outline ki-trash"></i></span>
+                    Zone de danger
+                </h3>
+            </div>
+            <div class="card-body p-6 d-flex flex-wrap align-items-center justify-content-between gap-4">
+                <div class="flex-grow-1">
+                    <h4 class="fw-bold text-dark fs-6 mb-1">Révoquer toutes les permissions</h4>
+                    <p class="text-muted fs-7 mb-0">
+                        Supprime toutes les permissions Web Services explicites de cet utilisateur.
+                        Cette action est irréversible.
+                    </p>
+                </div>
+                <button type="button" id="btn-revoke-all" class="btn btn-danger fw-semibold">
+                    <span class="svg-icon svg-icon-2"><i class="ki-outline ki-trash"></i></span>
+                    <span class="ms-2" id="btn-revoke-all-text">Révoquer toutes les permissions</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── TOAST ── --}}
+    <div id="toast" class="alert alert-light-success d-none position-fixed top-0 end-0 m-5 shadow" role="status"
+        aria-live="polite">
+        <p id="toast-msg" class="fs-7 fw-bold text-success mb-0"></p>
+    </div>
+
+    {{-- ── EDIT USER MODAL ── --}}
+    <div id="edit-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="edit-modal-title">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-radius-something shadow-lg">
+                <div class="modal-header border-0 pt-5 pb-2 px-7">
+                    <h5 class="fs-5 fw-bolder text-dark" id="edit-modal-title">Modifier l'utilisateur</h5>
+                    <button type="button" id="edit-modal-close" class="btn-close" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body px-7 pb-5">
+                    <div id="edit-form-error" class="alert alert-danger py-3 d-none" role="alert"></div>
+                    <form id="edit-user-form" novalidate>
+                        <div class="mb-4">
+                            <label for="ed-name" class="form-label fw-bold fs-7">Nom complet <span class="text-danger">*</span></label>
+                            <input type="text" id="ed-name" name="name" required maxlength="255"
+                                class="form-control form-control-solid fs-6" placeholder="Prénom Nom" />
+                            <p id="err-ed-name" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+                        </div>
+                        <div class="mb-4">
+                            <label for="ed-email" class="form-label fw-bold fs-7">Email <span class="text-danger">*</span></label>
+                            <input type="email" id="ed-email" name="email" required maxlength="255"
+                                class="form-control form-control-solid fs-6" autocomplete="email" />
+                            <p id="err-ed-email" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+                        </div>
+                        <div class="mb-4">
+                            <label for="ed-role" class="form-label fw-bold fs-7">Rôle</label>
+                            <select id="ed-role" name="role" class="form-select form-select-solid fs-6">
+                                <option value="user">Utilisateur</option>
+                                <option value="admin">Administrateur</option>
+                            </select>
+                            <p id="err-ed-role" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+                        </div>
+                        <div class="mb-1">
+                            <span class="form-label fw-bold fs-7 mb-0 d-block">Compte actif</span>
+                            <div class="d-flex align-items-center gap-3 mt-3">
+                                <label class="switch">
+                                    <input type="checkbox" id="ed-active" name="is_active" />
+                                    <span class="track"></span>
+                                    <span class="handle"></span>
+                                </label>
+                                <span id="ed-active-label" class="text-muted fs-7">Inactif</span>
+                            </div>
+                            <p id="err-ed-is_active" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+                        </div>
+                        <div class="d-flex justify-content-end gap-3 mt-5">
+                            <button type="button" id="edit-modal-cancel" class="btn btn-light-secondary fw-semibold">Annuler</button>
+                            <button type="submit" id="btn-save-user" class="btn btn-primary fw-semibold">
+                                <span id="btn-save-user-spinner" class="spinner spinner-sm spinner-primary d-none me-2"></span>
+                                <span id="btn-save-user-text">Enregistrer</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── PASSWORD RESET MODAL ── --}}
+    <div id="password-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="password-modal-title">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-radius-something shadow-lg">
+                <div class="modal-header border-0 pt-5 pb-2 px-7">
+                    <h5 class="fs-5 fw-bolder text-dark" id="password-modal-title">Réinitialiser le mot de passe</h5>
+                    <button type="button" id="password-modal-close" class="btn-close" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body px-7 pb-5">
+                    <div id="password-form-error" class="alert alert-danger py-3 d-none" role="alert"></div>
+                    <form id="password-reset-form" novalidate>
+                        <div class="mb-4">
+                            <label for="psw-new" class="form-label fw-bold fs-7">Nouveau mot de passe <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" id="psw-new" name="password" required minlength="8"
+                                    class="form-control form-control-solid fs-6" placeholder="8 caractères minimum"
+                                    autocomplete="new-password" />
+                                <button type="button" id="psw-toggle" class="btn btn-icon btn-sm btn-light-primary"
+                                    aria-label="Afficher ou masquer le mot de passe">
+                                    <span class="svg-icon svg-icon-2 text-primary"><i class="ki-outline ki-eye"></i></span>
+                                </button>
+                            </div>
+                            <p id="err-psw-new" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+                        </div>
+                        <div class="mb-4">
+                            <label for="psw-confirm" class="form-label fw-bold fs-7">Confirmation <span class="text-danger">*</span></label>
+                            <input type="password" id="psw-confirm" name="password_confirmation" required minlength="8"
+                                class="form-control form-control-solid fs-6" placeholder="Retapez le mot de passe"
+                                autocomplete="new-password" />
+                            <p id="err-psw-confirm" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+                        </div>
+                        <div class="d-flex justify-content-end gap-3 mt-5">
+                            <button type="button" id="password-modal-cancel" class="btn btn-light-secondary fw-semibold">Annuler</button>
+                            <button type="submit" id="btn-reset-password-submit" class="btn btn-primary fw-semibold">
+                                <span id="btn-reset-password-spinner" class="spinner spinner-sm spinner-primary d-none me-2"></span>
+                                <span id="btn-reset-password-text">Réinitialiser</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── REVOKE-ALL CONFIRM MODAL ── --}}
+    <div id="revoke-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="revoke-modal-title">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-radius-something shadow-lg">
+                <div class="modal-header border-0 pt-5 pb-2 px-7">
+                    <h5 class="fs-5 fw-bolder text-danger" id="revoke-modal-title">
+                        <span class="svg-icon svg-icon-2 text-danger me-2"><i class="ki-outline ki-trash"></i></span>
+                        Révoquer toutes les permissions
+                    </h5>
+                    <button type="button" id="revoke-modal-close" class="btn-close" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body px-7 pb-5">
+                    <p id="revoke-modal-message" class="fs-6 text-gray-700 mb-4"></p>
+                    <div id="revoke-modal-error" class="alert alert-danger py-3 d-none" role="alert"></div>
+                    <div class="d-flex justify-content-end gap-3">
+                        <button type="button" id="revoke-modal-cancel" class="btn btn-light-secondary fw-semibold">Annuler</button>
+                        <button type="button" id="btn-confirm-revoke" class="btn btn-danger fw-semibold">
+                            <span id="btn-confirm-revoke-spinner" class="spinner spinner-sm spinner-danger d-none me-2"></span>
+                            <span id="btn-confirm-revoke-text">Révoquer</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-(function () {
-    var token = localStorage.getItem('anapec_token');
-    if (!token) {
-        window.location.href = '/login';
-        return;
-    }
-
-    // ── Parse user id from /admin/users/{id} ──
-    var m = window.location.pathname.match(/\/admin\/users\/(\d+)$/);
-    var userId = m ? m[1] : null;
-    if (!userId) {
-        window.location.href = '/admin/users';
-        return;
-    }
-
-    function get(url) {
-        return fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
-        });
-    }
-
-    function roleBadge(role) {
-        if (role === 'admin') {
-            return '<span class="inline-flex items-center rounded-full bg-anapec-100 px-2.5 py-0.5 text-xs font-medium text-anapec-700">Administrateur</span>';
-        }
-        return '<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">Utilisateur</span>';
-    }
-
-    function statusBadge(active) {
-        if (active) {
-            return '<span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Actif</span>';
-        }
-        return '<span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">Inactif</span>';
-    }
-
-    function esc(v) {
-        if (v === null || v === undefined) return '—';
-        var d = document.createElement('div');
-        d.textContent = String(v);
-        return d.innerHTML;
-    }
-
-    function fmtDate(iso) {
-        if (!iso) return '—';
-        var d = new Date(iso);
-        if (isNaN(d.getTime())) return '—';
-        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-
-    function showToast(msg, type) {
-        var t = document.getElementById('toast');
-        var msgEl = document.getElementById('toast-msg');
-        msgEl.textContent = msg;
-        t.className = 'fixed right-4 top-4 z-[60] max-w-sm rounded-lg border px-4 py-3 shadow-sm ' +
-            (type === 'error'
-                ? 'border-red-200 bg-red-50'
-                : 'border-green-200 bg-green-50');
-        msgEl.className = type === 'error' ? 'text-sm font-medium text-red-800' : 'text-sm font-medium text-green-800';
-        t.classList.remove('hidden');
-        clearTimeout(t._timer);
-        t._timer = setTimeout(function () {
-            t.classList.add('hidden');
-        }, 4000);
-    }
-
-    var currentUser = null;
-
-    // ── Auth gate ──
-    var rootEl = document.getElementById('admin-user-show-root');
-    var authLoading = document.getElementById('auth-loading');
-
-    get('/api/v1/auth/me')
-        .then(function (res) {
-            if (res.status === 401) {
-                localStorage.removeItem('anapec_token');
-                localStorage.removeItem('anapec_user');
-                window.location.href = '/login';
-                return;
-            }
-            if (!res.ok) {
-                authLoading.classList.add('hidden');
-                return res.json().then(function () { showLoadError(); });
-            }
-            return res.json().then(function (data) {
-                if (!data.success || !data.data) {
-                    authLoading.classList.add('hidden');
-                    showLoadError();
-                    return;
-                }
-                var me = data.data;
-                localStorage.setItem('anapec_user', JSON.stringify(me));
-                if (me.role !== 'admin') {
-                    // Non-admin: do NOT load admin data, do NOT log out.
-                    authLoading.classList.add('hidden');
-                    showAccessDenied();
-                    setTimeout(function () { window.location.replace('/dashboard'); }, 1200);
-                    return;
-                }
-                authLoading.classList.add('hidden');
-                rootEl.classList.remove('hidden');
-                loadUser();
-            });
-        })
-        .catch(function () {
-            authLoading.classList.add('hidden');
-            showLoadError();
-        });
-
-    function showAccessDenied() {
-        document.getElementById('access-denied').classList.remove('hidden');
-    }
-
-    function showNotFound() {
-        document.getElementById('not-found').classList.remove('hidden');
-        document.getElementById('permissions-card').classList.add('hidden');
-        document.getElementById('domains-card').classList.add('hidden');
-    }
-
-    function showLoadError() {
-        document.getElementById('load-error').classList.remove('hidden');
-    }
-
-    function hideAllStates() {
-        ['access-denied', 'not-found', 'load-error'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-    }
-
-    function loadUser() {
-        hideAllStates();
-        document.getElementById('user-info-card').classList.add('hidden');
-        document.getElementById('domains-card').classList.add('hidden');
-        document.getElementById('permissions-card').classList.add('hidden');
-        document.getElementById('permissions-skeleton').innerHTML =
-            '<div class="space-y-3">' +
-            '<div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-40 animate-pulse rounded bg-gray-200"></div>' +
-            '</div>';
-        document.getElementById('permissions-skeleton').classList.remove('hidden');
-        document.getElementById('permissions-body').classList.add('hidden');
-
-        get('/api/v1/admin/users/' + userId)
-            .then(function (res) {
-                if (res.status === 403) { showAccessDenied(); return; }
-                if (res.status === 404) { showNotFound(); return; }
-                if (res.status === 401) {
-                    localStorage.removeItem('anapec_token');
-                    localStorage.removeItem('anapec_user');
-                    window.location.href = '/login';
-                    return;
-                }
-                if (!res.ok) { showLoadError(); return; }
-                return res.json().then(function (data) {
-                    document.getElementById('permissions-skeleton').classList.add('hidden');
-                    if (!data.success || !data.data) { showLoadError(); return; }
-                    currentUser = data.data;
-                    renderUser();
-                    loadPermissions();
-                });
-            })
-            .catch(function () {
-                document.getElementById('permissions-skeleton').classList.add('hidden');
-                showLoadError();
-            });
-    }
-
-    function renderUser() {
-        document.getElementById('user-info-card').classList.remove('hidden');
-        document.getElementById('domains-card').classList.remove('hidden');
-        document.getElementById('permissions-card').classList.remove('hidden');
-        document.getElementById('detail-name').textContent = currentUser.name || '—';
-        document.getElementById('detail-email').textContent = currentUser.email || '—';
-        document.getElementById('detail-role').innerHTML = roleBadge(currentUser.role);
-        document.getElementById('detail-status').innerHTML = statusBadge(currentUser.is_active === true);
-        document.getElementById('detail-created').textContent = fmtDate(currentUser.created_at);
-        document.getElementById('detail-updated').textContent = fmtDate(currentUser.updated_at);
-    }
-
-    // ── PERMISSIONS ──
-    // allPermissions merges the full official Web Service catalogue with this
-    // user's assigned permissions, so an admin can also grant a first
-    // permission to a user who currently has none.
-    var allPermissions = [];
-    var allDomains = [];
-    var allDomainCatalog = [];
-    var permissionToggleBusy = {};
-    var domainToggleBusy = {};
-
-    function updateRevokeButton() {
-        var btn = document.getElementById('btn-revoke-perms');
-        if (!btn) return;
-        var anyAssigned = allPermissions.some(function (p) {
-            return p.is_enabled === true;
-        });
-        btn.disabled = !anyAssigned;
-        btn.title = anyAssigned ? '' : 'Cet utilisateur n\'a aucune permission activée.';
-    }
-
-    function loadPermissions() {
-        document.getElementById('permissions-skeleton').innerHTML =
-            '<div class="space-y-3"><div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-40 animate-pulse rounded bg-gray-200"></div></div>';
-        document.getElementById('domains-skeleton').innerHTML =
-            '<div class="space-y-3"><div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-48 animate-pulse rounded bg-gray-200"></div>' +
-            '<div class="h-4 w-40 animate-pulse rounded bg-gray-200"></div></div>';
-        document.getElementById('permissions-skeleton').classList.remove('hidden');
-        document.getElementById('domains-skeleton').classList.remove('hidden');
-        document.getElementById('permissions-body').classList.add('hidden');
-        document.getElementById('domains-body').classList.add('hidden');
-
-        var assignedReq = get('/api/v1/admin/users/' + userId + '/web-services');
-        var catalogReq = get('/api/v1/admin/web-services');
-        var domainsReq = get('/api/v1/admin/users/' + userId + '/domains');
-        var domainCatalogReq = get('/api/v1/admin/domains');
-
-        Promise.all([assignedReq, catalogReq, domainsReq, domainCatalogReq])
-            .then(function (responses) {
-                document.getElementById('permissions-skeleton').classList.add('hidden');
-                document.getElementById('domains-skeleton').classList.add('hidden');
-
-                var assignedRes = responses[0];
-                var catalogRes = responses[1];
-                var domainsRes = responses[2];
-                var domainCatalogRes = responses[3];
-
-                if (assignedRes.status === 403) {
-                    renderPermissionsEmpty();
-                    return;
-                }
-                if (!assignedRes.ok || !catalogRes.ok) {
-                    renderPermissionsError();
-                    return;
-                }
-
-                return Promise.all([
-                    assignedRes.json(), catalogRes.json(),
-                    domainsRes.ok ? domainsRes.json() : { success: true, data: { domains: [], web_services: [] } },
-                    domainCatalogRes.ok ? domainCatalogRes.json() : { success: true, data: [] }
-                ]).then(function (payloads) {
-                    var assignedData = payloads[0];
-                    var catalogData = payloads[1];
-                    var domainsData = payloads[2];
-                    var domainCatalogData = payloads[3];
-
-                    if (!assignedData.success || !Array.isArray(assignedData.data)) {
-                        renderPermissionsError();
-                        return;
-                    }
-                    if (!catalogData.success || !Array.isArray(catalogData.data)) {
-                        renderPermissionsError();
-                        return;
-                    }
-
-                    var byCode = {};
-                    assignedData.data.forEach(function (p) {
-                        byCode[p.code] = p;
-                    });
-
-                    allPermissions = catalogData.data.map(function (svc) {
-                        var assigned = byCode[svc.code];
-                        var isEnabled = assigned !== undefined && assigned.is_enabled === true;
-                        var grantSource = assigned !== undefined ? assigned.grant_source : 'none';
-                        var domainGranted = assigned !== undefined ? assigned.domain_granted === true : false;
-                        var overrideDisabled = assigned !== undefined ? assigned.override_disabled === true : false;
-                        return {
-                            code: svc.code,
-                            name: svc.name || '',
-                            description: svc.description || '',
-                            global_is_active: svc.is_active === true,
-                            is_enabled: isEnabled,
-                            grant_source: grantSource,
-                            domain_granted: domainGranted,
-                            override_disabled: overrideDisabled,
-                            effective_access: assigned !== undefined
-                                ? assigned.effective_access === true
-                                : (currentUser && currentUser.is_active === true && svc.is_active === true && isEnabled)
-                        };
-                    });
-
-                    if (domainsData.success && domainsData.data) {
-                        allDomains = Array.isArray(domainsData.data.domains) ? domainsData.data.domains : [];
-                    } else {
-                        allDomains = [];
-                    }
-
-                    if (domainCatalogData.success && Array.isArray(domainCatalogData.data)) {
-                        allDomainCatalog = domainCatalogData.data;
-                    } else {
-                        allDomainCatalog = [];
-                    }
-
-                    renderPermissions();
-                    renderDomains();
-                });
-            })
-            .catch(function () {
-                document.getElementById('permissions-skeleton').classList.add('hidden');
-                document.getElementById('domains-skeleton').classList.add('hidden');
-                renderPermissionsError();
-            });
-    }
-
-    function renderDomains() {
-        var body = document.getElementById('domains-body');
-        body.classList.remove('hidden');
-
-        var grantedSet = {};
-        allDomains.forEach(function (d) { grantedSet[d.code] = d; });
-
-        // Build the full checkbox list from the domain catalog, merging the
-        // user's current grants (allDomains) onto it.
-        var rows = allDomainCatalog.map(function (d) {
-            var grant = grantedSet[d.code];
-            return {
-                code: d.code,
-                name: d.name || '',
-                is_active: d.is_active === true,
-                service_count: grant ? (grant.service_count || 0) : 0,
-                is_enabled: grant ? grant.is_enabled === true : false
-            };
-        });
-
-        if (!rows.length) {
-            body.innerHTML = '<p class="text-sm text-gray-500">Aucun domaine disponible.</p>';
-            return;
-        }
-
-        var anyGranted = rows.some(function (r) { return r.is_enabled; });
-        var html =
-            '<div class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-anapec-200 bg-anapec-50 px-4 py-3">' +
-            '<p class="text-xs font-medium text-anapec-700">' +
-            'Accordez un domaine pour ouvrir tous ses Web Services actifs d\'un coup.' +
-            '</p>' +
-            '<button type="button" id="btn-assign-domains" ' +
-            (anyGranted ? '' : 'disabled ') +
-            'class="inline-flex items-center gap-1.5 rounded-lg bg-anapec-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-anapec-700 focus:outline-none focus:ring-2 focus:ring-anapec-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">' +
-            'Assigner les domaines cochés' +
-            '</button>' +
-            '</div>';
-
-        rows.forEach(function (r) {
-            var active = r.is_active === true;
-            var granted = r.is_enabled === true;
-            html += '<div class="mb-3 last:mb-0 flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-4">' +
-                '<label class="flex min-w-0 items-start gap-3">' +
-                '<input type="checkbox" data-domain-check="' + esc(r.code) + '" ' + (granted ? 'checked' : '') +
-                ' class="mt-0.5 h-4 w-4 rounded border-gray-300 text-anapec-600 focus:ring-anapec-500" aria-label="Accorder ' + esc(r.code) + '" />' +
-                '<span class="min-w-0">' +
-                '<span class="flex items-center gap-2">' +
-                '<span class="font-mono text-sm font-semibold text-gray-900">' + esc(r.code) + '</span>' +
-                (active
-                    ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">Actif</span>'
-                    : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">Inactif</span>') +
-                '</span>' +
-                '<span class="mt-0.5 block text-xs text-gray-500">' + esc(r.name) + '</span>' +
-                '<span class="mt-0.5 block text-xs text-gray-400">' + (r.service_count || 0) + ' Web Services</span>' +
-                '</span>' +
-                '</label>' +
-                '</div>';
-        });
-
-        body.innerHTML = html;
-
-        var assignBtn = document.getElementById('btn-assign-domains');
-        if (assignBtn) assignBtn.addEventListener('click', function () {
-            var selected = [];
-            body.querySelectorAll('[data-domain-check]:checked').forEach(function (cb) {
-                selected.push(cb.getAttribute('data-domain-check'));
-            });
-            bulkAssignDomains(selected);
-        });
-    }
-
-    function bulkAssignDomains(selectedCodes) {
-        var api = window.apiClient;
-        if (!api) {
-            showToast('Client API introuvable.', 'error');
-            return;
-        }
-
-        var btn = document.getElementById('btn-assign-domains');
-        if (btn) { btn.disabled = true; btn.textContent = 'Assignation...'; }
-
-        api.put('/admin/users/' + userId + '/domains', { domains: selectedCodes })
-            .then(function () {
-                if (btn) { btn.disabled = false; btn.textContent = 'Assigner les domaines cochés'; }
-                showToast('Domaines assignés.');
-                loadPermissions();
-            })
-            .catch(function (err) {
-                if (btn) { btn.disabled = false; btn.textContent = 'Assigner les domaines cochés'; }
-                var status = err.status || (err.response ? err.response.status : null);
-                var body = err.body || (err.response ? err.response.data : null);
-                var msg = 'Une erreur est survenue. Veuillez réessayer.';
-                if (status === 403) msg = 'Accès non autorisé.';
-                else if (body && body.message) msg = body.message;
-                showToast(msg, 'error');
-            });
-    }
-
-    function toggleDomain(code, next, btn) {
-        // Legacy single-domain toggle (kept for PATCH-based toggles).
-        domainToggleBusy[code] = true;
-        btn.disabled = true;
-        btn.setAttribute('aria-busy', 'true');
-
-        var api = window.apiClient;
-
-        function done() {
-            domainToggleBusy[code] = false;
-            loadPermissions();
-        }
-
-        if (!api) {
-            delete domainToggleBusy[code];
-            showToast('Client API introuvable.', 'error');
-            btn.disabled = false;
-            btn.removeAttribute('aria-busy');
-            return;
-        }
-
-        api.patch('/admin/users/' + userId + '/domains/' + encodeURIComponent(code), { is_enabled: next })
-            .then(function (res) {
-                var body = res && res.data;
-                var data = body && body.data;
-                if (data) {
-                    var idx = -1;
-                    for (var i = 0; i < allDomains.length; i++) {
-                        if (allDomains[i].code === code) { idx = i; break; }
-                    }
-                    if (idx !== -1) {
-                        allDomains[idx].is_enabled = data.is_enabled === true;
-                    }
-                }
-                done();
-                showToast(next ? 'Domaine activé.' : 'Domaine désactivé.');
-            })
-            .catch(function (err) {
-                delete domainToggleBusy[code];
-                var status = err.status || (err.response ? err.response.status : null);
-                var body = err.body || (err.response ? err.response.data : null);
-                var msg = 'Une erreur est survenue. Veuillez réessayer.';
-                if (status === 403) msg = 'Accès non autorisé.';
-                else if (status === 404) msg = 'Domaine introuvable.';
-                else if (body && body.message) msg = body.message;
-                showToast(msg, 'error');
-                btn.disabled = false;
-                btn.removeAttribute('aria-busy');
-            });
-    }
-
-    function renderPermissions() {
-        var body = document.getElementById('permissions-body');
-        body.classList.remove('hidden');
-        if (!allPermissions.length) {
-            body.innerHTML = '<p class="text-sm text-gray-500">Aucun Web Service officiel disponible.</p>';
-            updateRevokeButton();
-            return;
-        }
-        var html = '';
-        allPermissions.forEach(function (p) {
-            var globalOn = p.global_is_active === true;
-            var enabled = p.is_enabled === true;
-            var effective = p.effective_access === true;
-            var globalBadge = globalOn
-                ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Actif</span>'
-                : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Inactif</span>';
-            var permBadge = enabled
-                ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Activée</span>'
-                : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Non appliquée</span>';
-            var effBadge = effective
-                ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Autorisé</span>'
-                : '<span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">Refusé</span>';
-            var sourceLabel = (function (src) {
-                switch (src) {
-                    case 'domain':
-                        return 'Via domaine';
-                    case 'direct':
-                        return 'Permission directe';
-                    case 'override_disabled':
-                        return 'Refus explicite';
-                    case 'none':
-                        return 'Aucun';
-                    default:
-                        return '—';
-                }
-            })(p.grant_source);
-
-            html += '<div class="mb-3 last:mb-0 rounded-lg border border-gray-200 p-4">' +
-                '<div class="flex items-center justify-between gap-3">' +
-                '<div class="min-w-0">' +
-                '<p class="text-sm font-semibold text-gray-900">' + esc(p.code) + '</p>' +
-                '<p class="text-xs text-gray-500">' + esc(p.name) + '</p>' +
-                (p.description ? '<p class="mt-0.5 text-xs text-gray-400">' + esc(p.description) + '</p>' : '') +
-                '</div>' +
-                '<div class="flex items-center gap-2.5">' +
-                effBadge +
-                permToggle(p, enabled) +
-                '</div>' +
-                '</div>' +
-                '<dl class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">' +
-                '<div><dt class="text-xs font-medium text-gray-500">Statut global</dt><dd class="mt-0.5">' + globalBadge + '</dd></div>' +
-                '<div><dt class="text-xs font-medium text-gray-500">Permission</dt><dd class="mt-0.5">' + permBadge + '</dd></div>' +
-                '<div><dt class="text-xs font-medium text-gray-500">Source d\'accès</dt><dd class="mt-0.5 text-xs font-medium text-gray-700">' +
-                esc(sourceLabel) + '</dd></div>' +
-                '</dl>' +
-                '</div>';
-        });
-        body.innerHTML = html;
-        updateRevokeButton();
-
-        body.querySelectorAll('[data-perm-code]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                togglePermission(btn.getAttribute('data-perm-code'), btn.getAttribute('data-next') === 'true', btn);
-            });
-        });
-    }
-
-    function permToggle(p, enabled) {
-        var code = esc(p.code);
-        var next = !enabled;
-        var isGlobalActive = p.global_is_active === true;
-        // Enabling requires a globally active service; disabling is always allowed.
-        var nextAllowed = !next || isGlobalActive;
-        var busy = permissionToggleBusy[p.code] === true;
-        var spin = '<span class="h-3 w-3 animate-spin rounded-full border-2 border-current opacity-60"></span> ';
-        var classes = nextAllowed
-            ? (next
-                ? 'border-green-200 text-green-700 hover:bg-green-50'
-                : 'border-red-200 text-red-700 hover:bg-red-50')
-            : 'border-gray-200 text-gray-400 cursor-not-allowed';
-        var title = nextAllowed ? '' : 'Ce Web Service est inactif : impossible de l\'activer.';
-        var label = nextAllowed ? (next ? 'Activer' : 'Désactiver') : 'Verrouillé';
-
-        return '<button type="button" data-perm-code="' + code + '" data-next="' + next + '" ' +
-            (busy || !nextAllowed ? 'disabled ' : '') +
-            'aria-busy="' + busy + '" aria-label="' + esc(label + ' ' + p.code) + '" title="' + esc(title) + '" ' +
-            'class="inline-flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-medium transition-colors ' + classes + '">' +
-            (busy ? spin : '') + esc(label) + '</button>';
-    }
-
-    function togglePermission(code, next, btn) {
-        var idx = -1;
-        for (var i = 0; i < allPermissions.length; i++) {
-            if (allPermissions[i].code === code) { idx = i; break; }
-        }
-        if (idx === -1) return;
-
-        var prev = {};
-        Object.keys(allPermissions[idx]).forEach(function (k) {
-            prev[k] = allPermissions[idx][k];
-        });
-        permissionToggleBusy[code] = true;
-        btn.disabled = true;
-        btn.setAttribute('aria-busy', 'true');
-
-        var api = window.apiClient;
-
-        function done() {
-            permissionToggleBusy[code] = false;
-            renderPermissions();
-        }
-
-        if (!api) {
-            delete permissionToggleBusy[code];
-            showToast('Client API introuvable.', 'error');
-            btn.disabled = false;
-            btn.removeAttribute('aria-busy');
-            return;
-        }
-
-        api.patch('/admin/users/' + userId + '/web-services/' + encodeURIComponent(code), { is_enabled: next })
-            .then(function (res) {
-                // The API wraps the payload: res.data = {success, message, data: {...}}.
-                var body = res && res.data;
-                var data = body && body.data;
-                if (data && typeof data.is_enabled === 'boolean') {
-                    // API response is the source of truth for this card.
-                    allPermissions[idx].is_enabled = data.is_enabled === true;
-                    allPermissions[idx].effective_access = data.effective_access === true;
-                    if (typeof data.global_is_active === 'boolean') {
-                        allPermissions[idx].global_is_active = data.global_is_active === true;
-                    }
-                } else {
-                    // Malformed/empty payload: fall back to the requested state
-                    // and keep effective access consistent so no field goes stale.
-                    allPermissions[idx].is_enabled = next;
-                    allPermissions[idx].effective_access = !!(next
-                        && allPermissions[idx].global_is_active === true
-                        && currentUser
-                        && currentUser.is_active === true);
-                }
-                done();
-                showToast(next ? 'Permission activée.' : 'Permission désactivée.');
-            })
-            .catch(function (err) {
-                // Restore the previous switch state on any failure.
-                allPermissions[idx] = prev;
-                var status = err.status || (err.response ? err.response.status : null);
-                var body = err.body || (err.response ? err.response.data : null);
-                var msg = 'Une erreur est survenue. Veuillez réessayer.';
-                if (status === 403) {
-                    msg = 'Accès non autorisé.';
-                } else if (status === 422 && body && body.message) {
-                    msg = body.message;
-                } else if (body && body.message) {
-                    msg = body.message;
-                }
-                done();
-                showToast(msg, 'error');
-            });
-    }
-
-    function renderPermissionsEmpty() {
-        var body = document.getElementById('permissions-body');
-        body.classList.remove('hidden');
-        body.innerHTML = '<p class="text-sm text-gray-500">Permission introuvable ou non autorisé.</p>';
-        updateRevokeButton();
-    }
-
-    function renderPermissionsError() {
-        var body = document.getElementById('permissions-body');
-        body.classList.remove('hidden');
-        body.innerHTML = '<p class="text-sm text-red-600">Impossible de charger les permissions.</p>';
-        updateRevokeButton();
-    }
-
-    // ════════════════════════════════════════════
-    //  REVOKE-ALL CONFIRMATION
-    // ════════════════════════════════════════════
-    var revokeModal = document.getElementById('revoke-modal');
-    var revokeBackdrop = document.getElementById('revoke-modal-backdrop');
-    var revokeMessage = document.getElementById('revoke-modal-message');
-    var revokeError = document.getElementById('revoke-modal-error');
-    var revokeBtn = document.getElementById('btn-confirm-revoke');
-    var revokeBtnText = document.getElementById('btn-confirm-revoke-text');
-    var revokeBtnSpinner = document.getElementById('btn-confirm-revoke-spinner');
-    var revokeLastFocused = null;
-    var revoking = false;
-
-    function openRevoke() {
-        var count = allPermissions.filter(function (p) {
-            return p.is_enabled === true;
-        }).length;
-        if (!count) return;
-        revokeLastFocused = document.activeElement;
-        revokeMessage.textContent = 'Voulez-vous révoquer les ' + count +
-            ' permission(s) Web Service accordée(s) à ' + (currentUser ? currentUser.name : 'cet utilisateur') + ' ?';
-        revokeError.classList.add('hidden');
-        revokeModal.classList.remove('hidden');
-        revokeModal.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-        revokeBtn.focus();
-    }
-    function closeRevoke(force) {
-        if (revoking && !force) return;
-        revokeModal.classList.add('hidden');
-        revokeModal.classList.remove('flex');
-        document.body.style.overflow = '';
-        if (revokeLastFocused && revokeLastFocused.focus) revokeLastFocused.focus();
-    }
-
-    var revokeTrigger = document.getElementById('btn-revoke-perms');
-    if (revokeTrigger) revokeTrigger.addEventListener('click', openRevoke);
-    document.getElementById('revoke-modal-close').addEventListener('click', closeRevoke);
-    document.getElementById('revoke-modal-cancel').addEventListener('click', closeRevoke);
-    revokeBackdrop.addEventListener('click', closeRevoke);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !revokeModal.classList.contains('hidden')) closeRevoke();
-    });
-
-    revokeBtn.addEventListener('click', function () {
-        if (revoking) return;
-        var api = window.apiClient;
-        if (!api) {
-            revokeError.textContent = 'Client API introuvable.';
-            revokeError.classList.remove('hidden');
-            return;
-        }
-
-        revoking = true;
-        revokeBtn.disabled = true;
-        revokeBtnSpinner.classList.remove('hidden');
-        revokeBtnText.textContent = 'Révocation en cours...';
-
-        api.delete('/admin/users/' + userId + '/web-services')
-            .then(function () {
-                allPermissions = allPermissions.map(function (p) {
-                    return {
-                        code: p.code,
-                        name: p.name,
-                        description: p.description,
-                        global_is_active: p.global_is_active,
-                        is_enabled: false,
-                        effective_access: false
-                    };
-                });
-                revoking = false;
-                revokeBtn.disabled = false;
-                revokeBtnSpinner.classList.add('hidden');
-                revokeBtnText.textContent = 'Révoquer';
-                closeRevoke(true);
-                renderPermissions();
-                showToast('Toutes les permissions ont été révoquées.');
-            })
-            .catch(function (err) {
-                revoking = false;
-                revokeBtn.disabled = false;
-                revokeBtnSpinner.classList.add('hidden');
-                revokeBtnText.textContent = 'Révoquer';
-                var status = err.status || (err.response ? err.response.status : null);
-                var body = err.body || (err.response ? err.response.data : null);
-                var msg = 'Une erreur est survenue. Veuillez réessayer.';
-                if (status === 403) {
-                    msg = 'Accès non autorisé.';
-                } else if (body && body.message) {
-                    msg = body.message;
-                }
-                revokeError.textContent = msg;
-                revokeError.classList.remove('hidden');
-            });
-    });
-
-    // ── RETRY ──
-    var retry = document.getElementById('btn-retry');
-    if (retry) retry.addEventListener('click', loadUser);
-
-    // ════════════════════════════════════════════
-    //  EDIT USER MODAL
-    // ════════════════════════════════════════════
-    var editModal = document.getElementById('edit-modal');
-    var editBackdrop = document.getElementById('edit-modal-backdrop');
-    var editForm = document.getElementById('edit-user-form');
-    var editFormError = document.getElementById('edit-form-error');
-    var btnSave = document.getElementById('btn-save-user');
-    var btnSaveText = document.getElementById('btn-save-user-text');
-    var btnSaveSpinner = document.getElementById('btn-save-user-spinner');
-    var editLastFocused = null;
-    var editSubmitting = false;
-
-    var editFields = ['name', 'email', 'role', 'is_active'];
-    function clearEditErrors() {
-        editFields.forEach(function (f) {
-            var el = document.getElementById('err-ed-' + f);
-            if (el) el.classList.add('hidden');
-        });
-        editFormError.classList.add('hidden');
-    }
-    function setEditError(name, msg) {
-        var el = document.getElementById('err-ed-' + name);
-        if (!el) return;
-        el.textContent = msg;
-        el.classList.remove('hidden');
-    }
-
-    function openEdit() {
-        if (!currentUser) return;
-        editLastFocused = document.activeElement;
-        document.getElementById('ed-name').value = currentUser.name || '';
-        document.getElementById('ed-email').value = currentUser.email || '';
-        document.getElementById('ed-role').value = currentUser.role || 'user';
-        document.getElementById('ed-active').checked = currentUser.is_active === true;
-        clearEditErrors();
-        editModal.classList.remove('hidden');
-        editModal.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-        document.getElementById('ed-name').focus();
-    }
-    function closeEdit() {
-        editModal.classList.add('hidden');
-        editModal.classList.remove('flex');
-        document.body.style.overflow = '';
-        if (editLastFocused && editLastFocused.focus) editLastFocused.focus();
-    }
-
-    document.getElementById('btn-edit-user').addEventListener('click', openEdit);
-    document.getElementById('edit-modal-close').addEventListener('click', closeEdit);
-    document.getElementById('edit-modal-cancel').addEventListener('click', closeEdit);
-    editBackdrop.addEventListener('click', closeEdit);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !editModal.classList.contains('hidden')) {
-            closeEdit();
-        }
-    });
-
-    function editValidate() {
-        clearEditErrors();
-        var ok = true;
-        var name = document.getElementById('ed-name').value.trim();
-        var email = document.getElementById('ed-email').value.trim();
-        if (!name) { setEditError('name', 'Le nom est requis.'); ok = false; }
-        if (!email) { setEditError('email', "L'email est requis."); ok = false; }
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEditError('email', 'Format d\'email invalide.'); ok = false; }
-        return ok;
-    }
-
-    editForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        if (editSubmitting) return;
-        if (!editValidate()) return;
-
-        var payload = {
-            name: document.getElementById('ed-name').value.trim(),
-            email: document.getElementById('ed-email').value.trim(),
-            role: document.getElementById('ed-role').value,
-            is_active: document.getElementById('ed-active').checked === true
-        };
-
-        editSubmitting = true;
-        btnSave.disabled = true;
-        btnSaveSpinner.classList.remove('hidden');
-        btnSaveText.textContent = 'Enregistrement...';
-
-        function done() {
-            editSubmitting = false;
-            btnSave.disabled = false;
-            btnSaveSpinner.classList.add('hidden');
-            btnSaveText.textContent = 'Enregistrer';
-        }
-
-        var api = window.apiClient;
-        if (!api) {
-            done();
-            showToast('Client API introuvable.', 'error');
-            return;
-        }
-
-        // PUT update profile (name/email/role) + PATCH status (is_active)
-        api.put('/admin/users/' + userId, {
-            name: payload.name,
-            email: payload.email,
-            role: payload.role
-        }).then(function () {
-            return api.patch('/admin/users/' + userId + '/status', { is_active: payload.is_active });
-        }).then(function () {
-            done();
-            closeEdit();
-            showToast('Utilisateur modifié avec succès.');
-            loadUser();
-        }).catch(function (err) {
-            done();
-            var status = err.status || (err.response ? err.response.status : null);
-            if (status === 401) {
-                localStorage.removeItem('anapec_token');
-                localStorage.removeItem('anapec_user');
-                window.location.href = '/login';
-                return;
-            }
-            if (status === 403) {
-                editFormError.textContent = 'Accès non autorisé.';
-                editFormError.classList.remove('hidden');
-                return;
-            }
-            var body = err.body || (err.response ? err.response.data : null);
-            if (status === 422 && body && body.errors) {
-                var mapped = { 'name': 'name', 'email': 'email', 'role': 'role', 'is_active': 'is_active' };
-                var has = false;
-                Object.keys(body.errors).forEach(function (f) {
-                    if (mapped[f]) {
-                        setEditError(mapped[f], Array.isArray(body.errors[f]) ? body.errors[f][0] : String(body.errors[f]));
-                        has = true;
-                    }
-                });
-                if (has) editFormError.classList.add('hidden');
-                else {
-                    editFormError.textContent = body.message || 'Erreur de validation.';
-                    editFormError.classList.remove('hidden');
-                }
-                return;
-            }
-            editFormError.textContent = 'Une erreur est survenue. Veuillez réessayer.';
-            editFormError.classList.remove('hidden');
-        });
-    });
-
-    // ════════════════════════════════════════════
-    //  PASSWORD RESET MODAL
-    // ════════════════════════════════════════════
-    var pswModal = document.getElementById('password-modal');
-    var pswBackdrop = document.getElementById('password-modal-backdrop');
-    var pswForm = document.getElementById('password-reset-form');
-    var pswFormError = document.getElementById('password-form-error');
-    var pswBtn = document.getElementById('btn-reset-password');
-    var pswBtnText = document.getElementById('btn-reset-password-text');
-    var pswBtnSpinner = document.getElementById('btn-reset-password-spinner');
-    var pswLastFocused = null;
-    var pswSubmitting = false;
-
-    function openPassword() {
-        pswLastFocused = document.activeElement;
-        document.getElementById('psw-new').value = '';
-        document.getElementById('psw-confirm').value = '';
-        pswFormError.classList.add('hidden');
-        document.getElementById('err-psw-new').classList.add('hidden');
-        document.getElementById('err-psw-confirm').classList.add('hidden');
-        pswModal.classList.remove('hidden');
-        pswModal.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-        document.getElementById('psw-new').focus();
-    }
-    function closePassword() {
-        pswModal.classList.add('hidden');
-        pswModal.classList.remove('flex');
-        document.body.style.overflow = '';
-        if (pswLastFocused && pswLastFocused.focus) pswLastFocused.focus();
-    }
-
-    document.getElementById('btn-reset-password').addEventListener('click', openPassword);
-    document.getElementById('password-modal-close').addEventListener('click', closePassword);
-    document.getElementById('password-modal-cancel').addEventListener('click', closePassword);
-    pswBackdrop.addEventListener('click', closePassword);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !pswModal.classList.contains('hidden')) closePassword();
-    });
-
-    // Show/hide password
-    document.getElementById('psw-toggle').addEventListener('click', function () {
-        var el = document.getElementById('psw-new');
-        var hidden = el.type === 'password';
-        el.type = hidden ? 'text' : 'password';
-    });
-
-    pswForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        if (pswSubmitting) return;
-
-        var psw = document.getElementById('psw-new').value;
-        var confirm = document.getElementById('psw-confirm').value;
-        var ok = true;
-        document.getElementById('err-psw-new').classList.add('hidden');
-        document.getElementById('err-psw-confirm').classList.add('hidden');
-        pswFormError.classList.add('hidden');
-
-        if (!psw) { document.getElementById('err-psw-new').textContent = 'Le mot de passe est requis.'; document.getElementById('err-psw-new').classList.remove('hidden'); ok = false; }
-        else if (psw.length < 8) { document.getElementById('err-psw-new').textContent = 'Au moins 8 caractères requis.'; document.getElementById('err-psw-new').classList.remove('hidden'); ok = false; }
-        if (psw !== confirm) { document.getElementById('err-psw-confirm').textContent = 'Les mots de passe ne correspondent pas.'; document.getElementById('err-psw-confirm').classList.remove('hidden'); ok = false; }
-        if (!ok) return;
-
-        pswSubmitting = true;
-        pswBtn.disabled = true;
-        pswBtnSpinner.classList.remove('hidden');
-        pswBtnText.textContent = 'Réinitialisation en cours...';
-
-        function done() {
-            pswSubmitting = false;
-            pswBtn.disabled = false;
-            pswBtnSpinner.classList.add('hidden');
-            pswBtnText.textContent = 'Réinitialiser';
-        }
-
-        var api = window.apiClient;
-        if (!api) {
-            done();
-            pswFormError.textContent = 'Client API introuvable.';
-            pswFormError.classList.remove('hidden');
-            return;
-        }
-
-        // Backend expects only "password" (no confirmation)
-        api.post('/admin/users/' + userId + '/password', { password: psw })
-            .then(function () {
-                done();
-                closePassword();
-                showToast('Mot de passe réinitialisé avec succès.');
-            })
-            .catch(function (err) {
-                done();
-                var status = err.status || (err.response ? err.response.status : null);
-                if (status === 401) {
-                    localStorage.removeItem('anapec_token');
-                    localStorage.removeItem('anapec_user');
-                    window.location.href = '/login';
-                    return;
-                }
-                if (status === 403) {
-                    pswFormError.textContent = 'Accès non autorisé.';
-                    pswFormError.classList.remove('hidden');
-                    return;
-                }
-                var body = err.body || (err.response ? err.response.data : null);
-                if (status === 422 && body && body.errors) {
-                    var f = body.errors.password || body.errors;
-                    pswFormError.textContent = Array.isArray(f) ? f[0] : (body.message || 'Erreur de validation.');
-                    pswFormError.classList.remove('hidden');
-                    return;
-                }
-                pswFormError.textContent = 'Une erreur est survenue. Veuillez réessayer.';
-                pswFormError.classList.remove('hidden');
-            });
-    });
-
-})();
-</script>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            var token = localStorage.getItem('anapec_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            var userId = @json($userId) || (window.location.pathname.match(/\/admin\/users\/(\d+)$/) || [])[1] || null;
+            if (!userId) {
+                window.location.href = '/admin/users';
+                return;
+            }
+
+            // ── API helpers (Metronic layout does not load Vite's apiClient) ──
+            function get(url) {
+                return fetch(url, {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+            }
+
+            function api() {
+                function req(method, url, data) {
+                    return fetch('/api/v1' + url, {
+                        method: method,
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: data ? JSON.stringify(data) : undefined
+                    }).then(function (res) {
+                        return res.json().catch(function () {
+                            return {};
+                        }).then(function (body) {
+                            if (res.ok) return { data: body, status: res.status };
+                            var err = new Error('HTTP ' + res.status);
+                            err.status = res.status;
+                            err.body = body;
+                            err.response = { status: res.status, data: body };
+                            throw err;
+                        });
+                    });
+                }
+                return {
+                    get: function (url) { return req('GET', url); },
+                    post: function (url, data) { return req('POST', url, data); },
+                    put: function (url, data) { return req('PUT', url, data); },
+                    patch: function (url, data) { return req('PATCH', url, data); },
+                    delete: function (url, data) { return req('DELETE', url, data); }
+                };
+            }
+
+            function esc(v) {
+                if (v === null || v === undefined) return '—';
+                var d = document.createElement('div');
+                d.textContent = String(v);
+                return d.innerHTML;
+            }
+
+            function fmtDate(iso) {
+                if (!iso) return '—';
+                var d = new Date(iso);
+                if (isNaN(d.getTime())) return '—';
+                return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+
+            function showToast(msg, type) {
+                var t = document.getElementById('toast');
+                var msgEl = document.getElementById('toast-msg');
+                msgEl.textContent = msg;
+                t.className = 'alert position-fixed top-0 end-0 m-5 shadow ' +
+                    (type === 'error' ? 'alert-danger' : 'alert-light-success');
+                msgEl.className = 'fs-7 fw-bold mb-0 ' + (type === 'error' ? 'text-danger' : 'text-success');
+                t.classList.remove('d-none');
+                clearTimeout(t._timer);
+                t._timer = setTimeout(function () { t.classList.add('d-none'); }, 4000);
+            }
+
+            // ── State ──
+            var user = null;
+            var accessScope = 'selected';
+            var domainCatalog = [];   // [{code,name,is_active,web_services:[{code,name,is_active}]}]
+            var userDomains = [];     // [{code,name,is_enabled}]
+            var services = [];        // effective states for every Web Service
+            var toggleBusy = {};
+
+            // ── State helpers ──
+            function activeServices() {
+                return services.filter(function (s) { return s.global_is_active === true; });
+            }
+
+            function effectiveCount() {
+                return services.filter(function (s) { return s.effective_access === true; }).length;
+            }
+
+            function configuredCount() {
+                return services.filter(function (s) {
+                    return s.is_enabled === true || s.override_disabled === true;
+                }).length;
+            }
+
+            function sourceLabel(s) {
+                if (s.override_disabled === true) return 'Exception utilisateur';
+                if (s.grant_source === 'global') return 'Accès global';
+                if (s.grant_source === 'direct') return 'Sélection explicite';
+                if (s.is_enabled === false && s.grant_source === 'none') return 'Aucun accès';
+                return 'Aucun accès';
+            }
+
+            function roleBadge(role) {
+                return role === 'admin'
+                    ? '<span class="badge badge-light-primary fw-semibold">Administrateur</span>'
+                    : '<span class="badge badge-light-secondary fw-semibold">Utilisateur</span>';
+            }
+
+            function statusBadge(active) {
+                return active
+                    ? '<span class="badge badge-light-success fw-semibold"><span class="bullet bullet-dot bg-success me-1"></span>Actif</span>'
+                    : '<span class="badge badge-light-danger fw-semibold"><span class="bullet bullet-dot bg-danger me-1"></span>Inactif</span>';
+            }
+
+            function serviceActiveBadge(active) {
+                return active
+                    ? '<span class="badge badge-light-success fw-semibold">Actif</span>'
+                    : '<span class="badge badge-light-secondary fw-semibold">Inactif</span>';
+            }
+
+            function effectiveBadge(effective) {
+                return effective
+                    ? '<span class="badge badge-light-success fw-semibold"><span class="bullet bullet-dot bg-success me-1"></span>Autorisé</span>'
+                    : '<span class="badge badge-light-danger fw-semibold"><span class="bullet bullet-dot bg-danger me-1"></span>Refusé</span>';
+            }
+
+            function scopeBadge(scope) {
+                return scope === 'all'
+                    ? '<span class="badge badge-light-success fw-semibold"><span class="bullet bullet-dot bg-success me-1"></span>Tous les Web Services</span>'
+                    : '<span class="badge badge-light-primary fw-semibold"><span class="bullet bullet-dot bg-primary me-1"></span>Services sélectionnés</span>';
+            }
+
+            function avatarHash(name) {
+                var hash = 0;
+                for (var i = 0; i < (name || '').length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+                return Math.abs(hash);
+            }
+
+            function initialFromName(name) {
+                var parts = (name || '').trim().split(/\s+/);
+                if (!parts.length) return '?';
+                if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+                return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+            }
+
+            var AVATAR_BG = ['bg-light-primary bg-opacity-100', 'bg-light-info bg-opacity-100',
+                'bg-light-success bg-opacity-100', 'bg-light-warning bg-opacity-100',
+                'bg-light-danger bg-opacity-100', 'bg-light-purple bg-opacity-100'
+            ];
+            var AVATAR_TEXT = ['text-primary', 'text-info', 'text-success', 'text-warning', 'text-danger', 'text-purple'];
+
+            function renderProfile() {
+                var h = avatarHash(user.name);
+                var avatar = document.getElementById('profile-avatar');
+                var label = document.getElementById('profile-avatar-label');
+                avatar.className = 'symbol symbol-100px mb-3 ' + AVATAR_BG[h % AVATAR_BG.length];
+                label.className = 'symbol-label text-start fs-3 fw-bolder ' + AVATAR_TEXT[h % AVATAR_TEXT.length];
+                label.textContent = initialFromName(user.name);
+
+                document.getElementById('profile-name').textContent = user.name || '—';
+                document.getElementById('profile-email').textContent = user.email || '—';
+                document.getElementById('profile-role').innerHTML = roleBadge(user.role);
+                document.getElementById('profile-status').innerHTML = statusBadge(user.is_active === true);
+                document.getElementById('profile-created').textContent = fmtDate(user.created_at);
+                document.getElementById('profile-updated').textContent = fmtDate(user.updated_at);
+
+                var badges = document.getElementById('profile-badges');
+                badges.innerHTML = roleBadge(user.role) + statusBadge(user.is_active === true);
+            }
+
+            function renderSummary() {
+                var totalActive = activeServices().length;
+                var eff = effectiveCount();
+                var cfg = configuredCount();
+
+                document.getElementById('summary-scope').innerHTML = scopeBadge(accessScope);
+                document.getElementById('summary-scope-help').textContent = accessScope === 'all'
+                    ? 'Chaque Web Service actif est accessible, sauf exception explicite.'
+                    : 'Seuls les Web Services sélectionnés explicitement sont accessibles.';
+
+                document.getElementById('summary-effective').textContent = eff + ' / ' + totalActive;
+                document.getElementById('summary-effective-help').textContent =
+                    'service' + (totalActive > 1 ? 's' : '') + ' accessible' + (totalActive > 1 ? 's' : '') + ' maintenant.';
+
+                document.getElementById('summary-configured').textContent = cfg;
+                document.getElementById('summary-configured-help').textContent =
+                    'permission' + (cfg > 1 ? 's' : '') + ' explicite' + (cfg > 1 ? 's' : '') + ' enregistrée' + (cfg > 1 ? 's' : '') + '.';
+            }
+
+            function domainGranted(code) {
+                for (var i = 0; i < userDomains.length; i++) {
+                    if (userDomains[i].code === code) return userDomains[i].is_enabled === true;
+                }
+                return false;
+            }
+
+            function serviceByCode(code) {
+                for (var i = 0; i < services.length; i++) {
+                    if (services[i].code === code) return services[i];
+                }
+                return null;
+            }
+
+            function toggleButton(s) {
+                var next = !s.is_enabled;
+                var busy = toggleBusy[s.code] === true;
+                var locked = next && s.global_is_active !== true;
+                var label = next ? 'Activer' : 'Désactiver';
+                var cls = next ? 'btn-light-success' : 'btn-light-danger';
+                var icon = next ? 'ki-toggle-on' : 'ki-toggle-off';
+                var title = locked ? 'Ce Web Service est inactif globalement : impossible de l\'activer.' : '';
+
+                return '<button type="button" data-perm-code="' + esc(s.code) + '" data-next="' + next + '"' +
+                    (busy || locked ? ' disabled' : '') +
+                    ' title="' + esc(title) + '"' +
+                    ' class="btn btn-sm ' + cls + ' fw-semibold flex-shrink-0">' +
+                    (busy ? '<span class="spinner spinner-sm spinner-light-' + (next ? 'success' : 'danger') + ' me-1"></span>' :
+                        '<span class="svg-icon svg-icon-2x me-1"><i class="ki-outline ' + icon + '"></i></span>') +
+                    label +
+                    '</button>';
+            }
+
+            function serviceRow(s) {
+                var inException = s.override_disabled === true;
+                return '<div class="d-flex flex-wrap align-items-center gap-3 p-4">' +
+                    '<span class="svg-icon svg-icon-2x flex-shrink-0 ' +
+                    (s.effective_access === true ? 'svg-icon-success' : 'svg-icon-secondary') + '">' +
+                    '<i class="ki-outline ' + (s.effective_access === true ? 'ki-check' : 'ki-lock') + '"></i></span>' +
+                    '<div class="flex-grow-1 min-w-0">' +
+                    '<div class="d-flex flex-wrap align-items-center gap-2">' +
+                    '<span class="font-mono text-dark fs-7 fw-bold">' + esc(s.code) + '</span>' +
+                    serviceActiveBadge(s.global_is_active === true) +
+                    effectiveBadge(s.effective_access === true) +
+                    '</div>' +
+                    '<div class="text-muted fs-7 mt-0.5 mb-1">' + esc(s.name) + '</div>' +
+                    '<div class="text-muted fs-7 fs-8">' +
+                    '<span class="text-muted">Source :</span> ' +
+                    '<span class="fw-semibold ' + (inException ? 'text-warning' : 'text-dark') + '">' +
+                    esc(sourceLabel(s)) + '</span>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="flex-shrink-0">' + toggleButton(s) + '</div>' +
+                    '</div>';
+            }
+
+            function renderAccess() {
+                var body = document.getElementById('access-body');
+
+                if (!services.length) {
+                    body.innerHTML = '<div class="p-8 text-center">' +
+                        '<span class="svg-icon svg-icon-3x svg-icon-muted d-block mb-2"><i class="ki-outline ki-cloud-off"></i></span>' +
+                        '<p class="text-gray-500 fs-6 fw-bold mb-0">Aucun Web Service disponible.</p></div>';
+                    return;
+                }
+
+                var html = '';
+                var grouped = false;
+
+                domainCatalog.forEach(function (d) {
+                    var dServices = (d.web_services || []).map(function (ws) {
+                        return serviceByCode(ws.code) || null;
+                    }).filter(Boolean);
+                    if (!dServices.length) return;
+                    grouped = true;
+
+                    var granted = domainGranted(d.code);
+                    html += '<div class="p-6 pb-2">' +
+                        '<div class="d-flex flex-wrap align-items-center gap-2 mb-1">' +
+                        '<span class="font-mono text-dark fs-7 fw-bold">' + esc(d.code) + '</span>' +
+                        serviceActiveBadge(d.is_active === true) +
+                        (granted
+                            ? '<span class="badge badge-light-success fw-semibold">Domaine accordé</span>'
+                            : '<span class="badge badge-light-secondary fw-semibold">Domaine non accordé</span>') +
+                        '<span class="badge badge-light-info fw-semibold">' + dServices.length + ' Web Service' +
+                        (dServices.length > 1 ? 's' : '') + '</span>' +
+                        '</div>' +
+                        '<div class="text-muted fs-7">' + esc(d.name) + '</div>' +
+                        '</div>';
+
+                    dServices.forEach(function (s, i) {
+                        html += serviceRow(s) +
+                            (i < dServices.length - 1 ? '<div class="border-b border-gray-200"></div>' : '');
+                    });
+                    html += '<div class="border-b border-gray-200"></div>';
+                });
+
+                var leftovers = services.filter(function (s) {
+                    return !domainCatalog.some(function (d) {
+                        return (d.web_services || []).some(function (ws) { return ws.code === s.code; });
+                    });
+                });
+                if (leftovers.length) {
+                    grouped = true;
+                    html += '<div class="p-6 pb-2"><span class="text-dark fs-7 fw-bold">Autres Web Services</span></div>';
+                    leftovers.forEach(function (s, i) {
+                        html += serviceRow(s) +
+                            (i < leftovers.length - 1 ? '<div class="border-b border-gray-200"></div>' : '');
+                    });
+                    html += '<div class="border-b border-gray-200"></div>';
+                }
+
+                if (!grouped) {
+                    services.forEach(function (s, i) {
+                        html += serviceRow(s) +
+                            (i < services.length - 1 ? '<div class="border-b border-gray-200"></div>' : '');
+                    });
+                }
+
+                body.innerHTML = html;
+                body.querySelectorAll('[data-perm-code]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        togglePermission(btn.getAttribute('data-perm-code'),
+                            btn.getAttribute('data-next') === 'true', btn);
+                    });
+                });
+            }
+
+            function renderOverrides() {
+                var card = document.getElementById('overrides-card');
+                var exceptions = services.filter(function (s) { return s.override_disabled === true; });
+                if (!exceptions.length) {
+                    card.classList.add('d-none');
+                    return;
+                }
+                card.classList.remove('d-none');
+
+                var html = '';
+                exceptions.forEach(function (s) {
+                    html += '<div class="d-flex flex-wrap align-items-center gap-3 p-4 border-b border-gray-200">' +
+                        '<span class="svg-icon svg-icon-2x svg-icon-warning flex-shrink-0">' +
+                        '<i class="ki-outline ki-close"></i></span>' +
+                        '<div class="flex-grow-1 min-w-0">' +
+                        '<div class="d-flex flex-wrap align-items-center gap-2">' +
+                        '<span class="font-mono text-dark fs-7 fw-bold">' + esc(s.code) + '</span>' +
+                        '<span class="badge badge-light-warning fw-semibold">Désactivé par exception</span>' +
+                        '</div>' +
+                        '<div class="text-muted fs-7 mt-0.5">' + esc(s.name) + '</div>' +
+                        '</div>' +
+                        '<div class="flex-shrink-0">' + toggleButton(s) + '</div>' +
+                        '</div>';
+                });
+                document.getElementById('overrides-body').innerHTML = html;
+
+                document.querySelectorAll('#overrides-body [data-perm-code]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        togglePermission(btn.getAttribute('data-perm-code'),
+                            btn.getAttribute('data-next') === 'true', btn);
+                    });
+                });
+            }
+
+            function renderDanger() {
+                var btn = document.getElementById('btn-revoke-all');
+                var count = services.filter(function (s) { return s.is_enabled === true; }).length;
+                if (count) {
+                    btn.disabled = false;
+                    document.getElementById('btn-revoke-all-text').textContent =
+                        'Révoquer toutes les permissions (' + count + ')';
+                } else {
+                    btn.disabled = true;
+                    document.getElementById('btn-revoke-all-text').textContent = 'Aucune permission à révoquer';
+                }
+            }
+
+            function renderAll() {
+                renderProfile();
+                renderSummary();
+                renderAccess();
+                renderOverrides();
+                renderDanger();
+            }
+
+            function refreshAfterChange() {
+                renderSummary();
+                renderAccess();
+                renderOverrides();
+                renderDanger();
+            }
+
+            // ── Permission toggle (existing PATCH endpoint) ──
+            function togglePermission(code, next, btn) {
+                var idx = -1;
+                for (var i = 0; i < services.length; i++) {
+                    if (services[i].code === code) { idx = i; break; }
+                }
+                if (idx === -1) return;
+
+                // Snapshot a copy: the response merges fields into services[idx]
+                // in place, so aliasing it would make the rollback a no-op.
+                var prev = JSON.parse(JSON.stringify(services[idx]));
+                toggleBusy[code] = true;
+                refreshAfterChange();
+
+                api().patch('/admin/users/' + userId + '/web-services/' + encodeURIComponent(code),
+                    { is_enabled: next })
+                    .then(function (res) {
+                        var data = res.data && res.data.data;
+                        if (data && typeof data.is_enabled === 'boolean') {
+                            Object.keys(data).forEach(function (k) {
+                                services[idx][k] = data[k];
+                            });
+                        } else {
+                            services[idx] = prev;
+                        }
+                        toggleBusy[code] = false;
+                        refreshAfterChange();
+                        showToast(next ? 'Permission activée.' : 'Permission désactivée.');
+                    })
+                    .catch(function (err) {
+                        services[idx] = prev;
+                        toggleBusy[code] = false;
+                        refreshAfterChange();
+                        var status = err.status || (err.response ? err.response.status : null);
+                        var body = err.body || (err.response ? err.response.data : null);
+                        var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                        if (status === 403) msg = 'Accès non autorisé.';
+                        else if (status === 404) msg = 'Web Service introuvable.';
+                        else if (body && body.message) msg = body.message;
+                        showToast(msg, 'error');
+                    });
+            }
+
+            // ── Loading orchestration ──
+            function showAuthLoading(on) { document.getElementById('auth-loading').classList.toggle('d-none', !on); }
+
+            function showState(id) {
+                ['auth-loading', 'access-denied', 'not-found', 'load-error'].forEach(function (s) {
+                    document.getElementById(s).classList.add('d-none');
+                });
+                document.getElementById('detail-root').classList.add('d-none');
+                if (id) document.getElementById(id).classList.remove('d-none');
+            }
+
+            function loadUser() {
+                showAuthLoading(true);
+
+                get('/api/v1/auth/me')
+                    .then(function (res) {
+                        if (res.status === 401) {
+                            localStorage.removeItem('anapec_token');
+                            localStorage.removeItem('anapec_user');
+                            window.location.href = '/login';
+                            return null;
+                        }
+                        if (!res.ok) {
+                            showState('load-error');
+                            return null;
+                        }
+                        return res.json().then(function (data) {
+                            var me = data.data;
+                            if (!me) { showState('load-error'); return null; }
+                            localStorage.setItem('anapec_user', JSON.stringify(me));
+                            if (me.role !== 'admin') { showState('access-denied'); return null; }
+                            return get('/api/v1/admin/users/' + userId).then(function (uRes) {
+                                if (uRes.status === 403) { showState('access-denied'); return; }
+                                if (uRes.status === 404) { showState('not-found'); return; }
+                                if (uRes.status === 401) {
+                                    localStorage.removeItem('anapec_token');
+                                    localStorage.removeItem('anapec_user');
+                                    window.location.href = '/login';
+                                    return;
+                                }
+                                if (!uRes.ok) { showState('load-error'); return; }
+                                return uRes.json().then(function (uData) {
+                                    if (!uData.success || !uData.data) { showState('load-error'); return; }
+                                    user = uData.data;
+                                    accessScope = user.access_scope || 'selected';
+                                    showState(null);
+                                    return loadAccess();
+                                });
+                            });
+                        });
+                    })
+                    .catch(function () { showState('load-error'); });
+            }
+
+            function loadAccess() {
+                var p1 = get('/api/v1/admin/users/' + userId + '/domains');
+                // create-scope eager-loads each domain's web_services, which the
+                // bare /admin/domains listing does not.
+                var p2 = get('/api/v1/admin/users/create-scope');
+
+                Promise.all([p1, p2]).then(function (res) {
+                    document.getElementById('detail-root').classList.remove('d-none');
+                    document.getElementById('access-body').innerHTML =
+                        '<div class="p-8 text-center"><span class="spinner spinner-sm spinner-primary mb-2"></span>' +
+                        '<p class="text-muted fs-7 mb-0">Chargement des accès...</p></div>';
+
+                    if (res[0].status === 403) { showState('access-denied'); return; }
+                    if (!res[0].ok) { showState('load-error'); return; }
+
+                    return Promise.all([res[0].json(), res[1].ok ? res[1].json() : null]).then(function (parsed) {
+                        var d1 = parsed[0];
+                        var d2 = parsed[1];
+                        var data = d1.data || {};
+
+                        accessScope = data.access_scope || accessScope;
+                        userDomains = Array.isArray(data.domains) ? data.domains : [];
+                        services = Array.isArray(data.web_services) ? data.web_services : [];
+                        domainCatalog = Array.isArray(d2 && d2.data && d2.data.data)
+                            ? d2.data.data
+                            : (Array.isArray(d2 && d2.data) ? d2.data : []);
+
+                        renderAll();
+                    });
+                }).catch(function () { showState('load-error'); });
+            }
+
+            // ── Bindings ──
+            document.getElementById('btn-retry').addEventListener('click', loadUser);
+
+            // Edit modal
+            var editModalEl = document.getElementById('edit-modal');
+            var editForm = document.getElementById('edit-user-form');
+            var editFormError = document.getElementById('edit-form-error');
+            var btnSave = document.getElementById('btn-save-user');
+            var btnSaveText = document.getElementById('btn-save-user-text');
+            var btnSaveSpinner = document.getElementById('btn-save-user-spinner');
+            var editSubmitting = false;
+
+            function setEditError(name, msg) {
+                var el = document.getElementById('err-ed-' + name);
+                if (!el) return;
+                el.textContent = msg;
+                el.classList.remove('d-none');
+            }
+
+            function clearEditErrors() {
+                ['name', 'email', 'role', 'is_active'].forEach(function (f) {
+                    var el = document.getElementById('err-ed-' + f);
+                    if (el) el.classList.add('d-none');
+                });
+                editFormError.classList.add('d-none');
+            }
+
+            function syncActiveLabel() {
+                var active = document.getElementById('ed-active').checked;
+                var el = document.getElementById('ed-active-label');
+                el.textContent = active ? 'Actif' : 'Inactif';
+                el.className = 'fs-7 ' + (active ? 'text-success' : 'text-muted');
+            }
+
+            document.getElementById('ed-active').addEventListener('change', syncActiveLabel);
+
+            document.getElementById('btn-edit-user').addEventListener('click', function () {
+                if (!user) return;
+                document.getElementById('ed-name').value = user.name || '';
+                document.getElementById('ed-email').value = user.email || '';
+                document.getElementById('ed-role').value = user.role || 'user';
+                document.getElementById('ed-active').checked = user.is_active === true;
+                syncActiveLabel();
+                clearEditErrors();
+                bootstrap.Modal.getOrCreateInstance(editModalEl).show();
+            });
+
+            ['edit-modal-close', 'edit-modal-cancel'].forEach(function (id) {
+                document.getElementById(id).addEventListener('click', function () {
+                    bootstrap.Modal.getOrCreateInstance(editModalEl).hide();
+                });
+            });
+
+            editForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (editSubmitting) return;
+                clearEditErrors();
+
+                var ok = true;
+                var name = document.getElementById('ed-name').value.trim();
+                var email = document.getElementById('ed-email').value.trim();
+                if (!name) { setEditError('name', 'Le nom est requis.'); ok = false; }
+                if (!email) { setEditError('email', "L'email est requis."); ok = false; }
+                else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    setEditError('email', 'Format d\'email invalide.');
+                    ok = false;
+                }
+                if (!ok) return;
+
+                var payload = {
+                    name: name,
+                    email: email,
+                    role: document.getElementById('ed-role').value,
+                    is_active: document.getElementById('ed-active').checked === true
+                };
+
+                editSubmitting = true;
+                btnSave.disabled = true;
+                btnSaveSpinner.classList.remove('d-none');
+                btnSaveText.textContent = 'Enregistrement...';
+
+                function done() {
+                    editSubmitting = false;
+                    btnSave.disabled = false;
+                    btnSaveSpinner.classList.add('d-none');
+                    btnSaveText.textContent = 'Enregistrer';
+                }
+
+                var client = api();
+                client.put('/admin/users/' + userId, {
+                    name: payload.name, email: payload.email, role: payload.role
+                }).then(function () {
+                    return client.patch('/admin/users/' + userId + '/status', { is_active: payload.is_active });
+                }).then(function () {
+                    done();
+                    bootstrap.Modal.getOrCreateInstance(editModalEl).hide();
+                    showToast('Utilisateur modifié avec succès.');
+                    loadUser();
+                }).catch(function (err) {
+                    done();
+                    var status = err.status || (err.response ? err.response.status : null);
+                    if (status === 401) {
+                        localStorage.removeItem('anapec_token');
+                        localStorage.removeItem('anapec_user');
+                        window.location.href = '/login';
+                        return;
+                    }
+                    if (status === 403) {
+                        editFormError.textContent = 'Accès non autorisé.';
+                        editFormError.classList.remove('d-none');
+                        return;
+                    }
+                    var body = err.body || (err.response ? err.response.data : null);
+                    if (status === 422 && body && body.errors) {
+                        var mapped = { name: 'name', email: 'email', role: 'role', is_active: 'is_active' };
+                        var has = false;
+                        Object.keys(body.errors).forEach(function (f) {
+                            if (mapped[f]) {
+                                setEditError(mapped[f],
+                                    Array.isArray(body.errors[f]) ? body.errors[f][0] : String(body.errors[f]));
+                                has = true;
+                            }
+                        });
+                        if (has) return;
+                    }
+                    editFormError.textContent = (body && body.message) || 'Erreur de validation.';
+                    editFormError.classList.remove('d-none');
+                });
+            });
+
+            // Password modal
+            var pswModalEl = document.getElementById('password-modal');
+            var pswForm = document.getElementById('password-reset-form');
+            var pswFormError = document.getElementById('password-form-error');
+            var pswBtn = document.getElementById('btn-reset-password-submit');
+            var pswBtnText = document.getElementById('btn-reset-password-text');
+            var pswBtnSpinner = document.getElementById('btn-reset-password-spinner');
+            var pswSubmitting = false;
+
+            document.getElementById('btn-reset-password').addEventListener('click', function () {
+                document.getElementById('psw-new').value = '';
+                document.getElementById('psw-confirm').value = '';
+                document.getElementById('err-psw-new').classList.add('d-none');
+                document.getElementById('err-psw-confirm').classList.add('d-none');
+                pswFormError.classList.add('d-none');
+                bootstrap.Modal.getOrCreateInstance(pswModalEl).show();
+            });
+
+            ['password-modal-close', 'password-modal-cancel'].forEach(function (id) {
+                document.getElementById(id).addEventListener('click', function () {
+                    bootstrap.Modal.getOrCreateInstance(pswModalEl).hide();
+                });
+            });
+
+            document.getElementById('psw-toggle').addEventListener('click', function () {
+                var el = document.getElementById('psw-new');
+                el.type = el.type === 'password' ? 'text' : 'password';
+            });
+
+            pswForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (pswSubmitting) return;
+
+                var psw = document.getElementById('psw-new').value;
+                var confirm = document.getElementById('psw-confirm').value;
+                var ok = true;
+                document.getElementById('err-psw-new').classList.add('d-none');
+                document.getElementById('err-psw-confirm').classList.add('d-none');
+                pswFormError.classList.add('d-none');
+
+                if (!psw) {
+                    document.getElementById('err-psw-new').textContent = 'Le mot de passe est requis.';
+                    document.getElementById('err-psw-new').classList.remove('d-none');
+                    ok = false;
+                } else if (psw.length < 8) {
+                    document.getElementById('err-psw-new').textContent = 'Au moins 8 caractères requis.';
+                    document.getElementById('err-psw-new').classList.remove('d-none');
+                    ok = false;
+                }
+                if (psw !== confirm) {
+                    document.getElementById('err-psw-confirm').textContent = 'Les mots de passe ne correspondent pas.';
+                    document.getElementById('err-psw-confirm').classList.remove('d-none');
+                    ok = false;
+                }
+                if (!ok) return;
+
+                pswSubmitting = true;
+                pswBtn.disabled = true;
+                pswBtnSpinner.classList.remove('d-none');
+                pswBtnText.textContent = 'Réinitialisation...';
+
+                function done() {
+                    pswSubmitting = false;
+                    pswBtn.disabled = false;
+                    pswBtnSpinner.classList.add('d-none');
+                    pswBtnText.textContent = 'Réinitialiser';
+                }
+
+                api().post('/admin/users/' + userId + '/password', { password: psw })
+                    .then(function () {
+                        done();
+                        bootstrap.Modal.getOrCreateInstance(pswModalEl).hide();
+                        showToast('Mot de passe réinitialisé avec succès.');
+                    })
+                    .catch(function (err) {
+                        done();
+                        var status = err.status || (err.response ? err.response.status : null);
+                        if (status === 401) {
+                            localStorage.removeItem('anapec_token');
+                            localStorage.removeItem('anapec_user');
+                            window.location.href = '/login';
+                            return;
+                        }
+                        if (status === 403) {
+                            pswFormError.textContent = 'Accès non autorisé.';
+                            pswFormError.classList.remove('d-none');
+                            return;
+                        }
+                        var body = err.body || (err.response ? err.response.data : null);
+                        if (status === 422 && body && body.errors) {
+                            var f = body.errors.password || body.errors;
+                            pswFormError.textContent = Array.isArray(f) ? f[0] : 'Erreur de validation.';
+                            pswFormError.classList.remove('d-none');
+                            return;
+                        }
+                        pswFormError.textContent = (body && body.message) || 'Une erreur est survenue.';
+                        pswFormError.classList.remove('d-none');
+                    });
+            });
+
+            // Revoke-all modal
+            var revokeModalEl = document.getElementById('revoke-modal');
+            var revokeBtn = document.getElementById('btn-confirm-revoke');
+            var revokeBtnText = document.getElementById('btn-confirm-revoke-text');
+            var revokeBtnSpinner = document.getElementById('btn-confirm-revoke-spinner');
+            var revokeError = document.getElementById('revoke-modal-error');
+            var revoking = false;
+
+            document.getElementById('btn-revoke-all').addEventListener('click', function () {
+                var count = services.filter(function (s) { return s.is_enabled === true; }).length;
+                if (!count) return;
+                revokeError.classList.add('d-none');
+                document.getElementById('revoke-modal-message').innerHTML =
+                    '<strong>' + esc(user.name || 'cet utilisateur') + '</strong> possède actuellement ' +
+                    '<strong>' + count + '</strong> permission' + (count > 1 ? 's' : '') +
+                    ' Web Service active' + (count > 1 ? 's' : '') +
+                    '. Voulez-vous toutes les révoquer ?';
+                bootstrap.Modal.getOrCreateInstance(revokeModalEl).show();
+            });
+
+            ['revoke-modal-close', 'revoke-modal-cancel'].forEach(function (id) {
+                document.getElementById(id).addEventListener('click', function () {
+                    if (!revoking) bootstrap.Modal.getOrCreateInstance(revokeModalEl).hide();
+                });
+            });
+
+            revokeBtn.addEventListener('click', function () {
+                if (revoking) return;
+                revoking = true;
+                revokeBtn.disabled = true;
+                revokeBtnSpinner.classList.remove('d-none');
+                revokeBtnText.textContent = 'Révocation...';
+
+                api().delete('/admin/users/' + userId + '/web-services')
+                    .then(function () {
+                        revoking = false;
+                        revokeBtn.disabled = false;
+                        revokeBtnSpinner.classList.add('d-none');
+                        revokeBtnText.textContent = 'Révoquer';
+                        bootstrap.Modal.getOrCreateInstance(revokeModalEl).hide();
+                        showToast('Toutes les permissions ont été révoquées.');
+                        loadAccess();
+                    })
+                    .catch(function (err) {
+                        revoking = false;
+                        revokeBtn.disabled = false;
+                        revokeBtnSpinner.classList.add('d-none');
+                        revokeBtnText.textContent = 'Révoquer';
+                        var status = err.status || (err.response ? err.response.status : null);
+                        var body = err.body || (err.response ? err.response.data : null);
+                        var msg = 'Une erreur est survenue. Veuillez réessayer.';
+                        if (status === 403) msg = 'Accès non autorisé.';
+                        else if (body && body.message) msg = body.message;
+                        revokeError.textContent = msg;
+                        revokeError.classList.remove('d-none');
+                    });
+            });
+
+            // ── Go ──
+            loadUser();
+        })();
+    </script>
+@endpush

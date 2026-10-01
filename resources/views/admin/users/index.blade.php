@@ -398,8 +398,7 @@
                                         <p id="err-email" class="form-message text-danger fw-semibold fs-7 d-none"></p>
                                     </div>
                                     <div class="col-lg-6">
-                                        <label for="nu-password" class="form-label fw-bold fs-7">Mot de passe <span
-                                                class="text-danger">*</span></label>
+                                        <label for="nu-password" class="form-label fw-bold fs-7">Mot de passe <span id="pwd-req" class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <input type="password" id="nu-password" name="password" required
                                                 minlength="8" class="form-control form-control-solid fs-6"
@@ -416,12 +415,12 @@
 
                                                 </span>
                                             </button>
-                                        </div>
-                                        <p id="err-password" class="form-message text-danger fw-semibold fs-7 d-none"></p>
+</div>
+<p id="pwd-help" class="form-text text-muted fs-7 d-none">Laisser vide pour conserver le mot de passe actuel.</p>
+<p id="err-password" class="form-message text-danger fw-semibold fs-7 d-none"></p>
                                     </div>
                                     <div class="col-lg-6">
-                                        <label for="nu-password-confirm" class="form-label fw-bold fs-7">Confirmation
-                                            <span class="text-danger">*</span></label>
+<label for="nu-password-confirm" class="form-label fw-bold fs-7">Confirmation <span id="pwd-confirm-req" class="text-danger">*</span></label>
                                         <input type="password" id="nu-password-confirm" name="password_confirmation"
                                             required minlength="8" class="form-control form-control-solid fs-6"
                                             placeholder="Retapez le mot de passe" autocomplete="new-password" />
@@ -735,14 +734,18 @@
 
             function countBadge(n) {
                 if (!n) return '<span class="text-muted fs-7">—</span>';
-                return '<span class="badge badge-light-info fw-semibold">' + n + ' service(s)</span>';
+                return '<span class="badge badge-light-info fw-semibold">' + n + ' service' +
+                    (n > 1 ? 's' : '') + '</span>';
             }
 
-            function effectiveBadge(cfg, eff) {
+            function effectiveBadge(cfg, eff, total) {
                 if (!cfg) return '<span class="text-muted fs-7">—</span>';
-                if (eff) return '<span class="badge badge-light-success fw-semibold">' + eff + ' / ' + cfg +
-                    ' actif(s)</span>';
-                return '<span class="badge badge-light-secondary fw-semibold">0 / ' + cfg + '</span>';
+                var denom = total || cfg;
+                var pct = Math.round((eff / denom) * 100);
+                var cls = pct === 100 ? 'badge-light-success'
+                    : pct === 0 ? 'badge-light-secondary' : 'badge-light-warning';
+                return '<span class="badge ' + cls + ' fw-semibold">' + eff + ' / ' + denom +
+                    ' actif' + (denom > 1 ? 's' : '') + '</span>';
             }
 
             function showAuthLoading(show) {
@@ -1122,6 +1125,8 @@
 
             var lastFocused = null;
             var submitting = false;
+            var isEditMode = false;
+            var editingUserId = null;
 
             function clearFieldErrors() {
                 ['name', 'email', 'password', 'password-confirm'].forEach(function(f) {
@@ -1138,15 +1143,44 @@
                 el.classList.remove('d-none');
             }
 
+            function setModalMode(mode) {
+                isEditMode = (mode === 'edit');
+                var title = document.getElementById('user-modal-title');
+                var btnText = document.getElementById('btn-create-user-text');
+                var pwdReq = document.getElementById('pwd-req');
+                var pwdConfirmReq = document.getElementById('pwd-confirm-req');
+                var pwdHelp = document.getElementById('pwd-help');
+                if (isEditMode) {
+                    title.textContent = 'Modifier un utilisateur';
+                    btnText.textContent = "Enregistrer les modifications";
+                    pwdReq.classList.add('d-none');
+                    pwdConfirmReq.classList.add('d-none');
+                    pwdHelp.classList.remove('d-none');
+                    pwdInput.removeAttribute('required');
+                    pwdConfirm.removeAttribute('required');
+                } else {
+                    title.textContent = 'Créer un utilisateur';
+                    btnText.textContent = "Créer l'utilisateur";
+                    pwdReq.classList.remove('d-none');
+                    pwdConfirmReq.classList.remove('d-none');
+                    pwdHelp.classList.add('d-none');
+                    pwdInput.setAttribute('required', '');
+                    pwdConfirm.setAttribute('required', '');
+                }
+            }
+
             function openModal() {
                 lastFocused = document.activeElement;
                 createForm.reset();
                 clearFieldErrors();
+                setModalMode('create');
+                editingUserId = null;
                 pwdInput.type = 'password';
                 activeCb.checked = true;
                 activeLabel.textContent = 'Actif';
                 selectedDomainData = {};
-                domainsSection.classList.add('d-none');
+                setScopeRadio('all');
+                selectAllScope();
                 loadCatalog(function() {
                     renderDomainList('');
                     updateDomainCounter();
@@ -1160,6 +1194,8 @@
                 createModal.hide();
                 document.body.style.overflow = '';
                 if (lastFocused && lastFocused.focus) lastFocused.focus();
+                setModalMode('create');
+                editingUserId = null;
             }
 
             function loadCatalog(cb) {
@@ -1181,21 +1217,45 @@
                 return r ? r.value : 'all';
             }
 
-            function setScopeUI(selected) {
+            function setScopeUI(showDomains) {
+                if (showDomains) {
+                    domainsSection.classList.remove('d-none');
+                } else {
+                    domainsSection.classList.add('d-none');
+                }
+            }
+
+            function selectAllScope() {
+                selectedDomainData = {};
+                setScopeUI(false);
+                updateDomainCounter();
+                updateSummary();
+            }
+
+            function selectSelectedScope() {
+                setScopeUI(true);
+                renderDomainList(domainSearchEl.value);
+                updateDomainCounter();
+                updateSummary();
+            }
+
+            function setScopeRadio(value) {
                 var allR = document.querySelector('[data-scope-radio][value="all"]');
                 var selR = document.querySelector('[data-scope-radio][value="selected"]');
-                if (allR) allR.checked = !selected;
-                if (selR) selR.checked = selected;
-                domainsSection.classList.toggle('d-none', !selected);
+                if (allR) allR.checked = value === 'all';
+                if (selR) selR.checked = value === 'selected';
+            }
+
+            function applyScopeValue(value) {
+                if (value === 'all') {
+                    selectAllScope();
+                } else {
+                    selectSelectedScope();
+                }
             }
 
             function updateScopeUI() {
-                var selected = currentScope() === 'selected';
-                setScopeUI(selected);
-                if (selected) {
-                    renderDomainList(domainSearchEl.value);
-                    updateDomainCounter();
-                }
+                applyScopeValue(currentScope());
             }
             document.querySelectorAll('[data-scope-radio]').forEach(function(r) {
                 r.addEventListener('change', updateScopeUI);
@@ -1222,13 +1282,15 @@
                     var entry = selectedDomainData[d.code];
                     var isDomainSelected = !!entry;
                     var domainWS = activeWSOf(d.code);
-                    var wsState = (entry && entry.webServices) || {};
+                    var wsState = selectedWsState(d.code);
                     var total = domainWS.length;
-                    var activeCount = domainWS.filter(function(ws) {
-                        return wsState[ws.code] === true;
+                    var selectedCount = countSelectedWs(d.code);
+                    var allChecked = total > 0 && selectedCount === total;
+                    var someChecked = selectedCount > 0 && !allChecked;
+
+                    var activeCount = (d.web_services || []).filter(function(ws) {
+                        return ws.is_active === true;
                     }).length;
-                    var allChecked = total > 0 && activeCount === total;
-                    var someChecked = activeCount > 0 && !allChecked;
 
                     html += '<div class="list-item" data-domain-code="' + esc(d.code) + '">' +
                         '<label class="domain-box">' +
@@ -1240,7 +1302,7 @@
                         '<span class="domain-name">' + esc(d.name) + '</span>' +
                         '<span class="domain-meta">' +
                         '<span class="domain-code me-2">' + esc(d.code) + '</span>' +
-                        '<span>' + (d.service_count || 0) + ' Web Services</span>' +
+                        '<span>' + activeCount + ' / ' + (d.service_count || 0) + ' Web Services actifs</span>' +
                         '</span>' +
                         (d.is_active === true ?
                             '<span class="badge badge-light-success fw-semibold ms-auto">Actif</span>' :
@@ -1250,14 +1312,7 @@
 
                     if (isDomainSelected) {
                         var wsSuffix = total > 1 ? 's' : '';
-                        var wsLabel;
-                        if (activeCount === 0) {
-                            wsLabel = '0 / ' + total + ' sélectionné' + wsSuffix;
-                        } else if (activeCount < total) {
-                            wsLabel = activeCount + ' / ' + total + ' sélectionné' + wsSuffix;
-                        } else {
-                            wsLabel = total + ' / ' + total + ' sélectionné' + wsSuffix;
-                        }
+                        var wsLabel = selectedCount + ' / ' + total + ' sélectionné' + wsSuffix;
                         html += '<div class="ws-group ms-4 mt-1 mb-2 ps-3" style="border-left: 2px solid var(--bs-primary, #1266f1);">';
                         html += '<label class="domain-box mb-2" style="background-color: #f8f9fa;">' +
                             '<input type="checkbox" class="domain-checkbox ws-select-all" data-domain-code="' + esc(d.code) +
@@ -1266,10 +1321,14 @@
                             'aria-label="Tous les Web Services de ' + esc(d.name) + '" />' +
                             '<span class="checkbox-circle"></span>' +
                             '<span>' +
-                            '<span class="domain-name fw-semibold d-block">Tous les Web Services</span>' +
+                            '<span class="domain-name fw-semibold d-block">Tous les Web Services' +
+                            (activeCount < (d.service_count || 0) ? ' actifs' : '') + '</span>' +
                             '<span class="badge badge-light-primary fs-7 mt-1">' + wsLabel + '</span>' +
                             '</span>' +
                             '</label>';
+                        if (total === 0) {
+                            html += '<div class="text-muted fs-7 ms-3 mb-2">Ce domaine ne contient aucun Web Service actif.</div>';
+                        }
                         domainWS.forEach(function(ws) {
                             var wsSel = wsState[ws.code] === true;
                             html += '<label class="domain-box ms-3 mb-2" style="background-color: #fff;">' +
@@ -1282,9 +1341,7 @@
                                 '<span class="domain-meta">' +
                                 '<span class="domain-code me-2">' + esc(ws.code) + '</span>' +
                                 '</span>' +
-                                (ws.is_active === true ?
-                                    '<span class="badge badge-light-success fw-semibold ms-auto">Actif</span>' :
-                                    '<span class="badge badge-light-secondary fw-semibold ms-auto">Inactif</span>') +
+                                '<span class="badge badge-light-success fw-semibold ms-auto">Actif</span>' +
                                 '</label>';
                         });
                         html += '</div>';
@@ -1296,12 +1353,13 @@
                     cb.addEventListener('change', function() {
                         var code = cb.getAttribute('data-domain-code');
                         if (cb.checked) {
-                            selectedDomainData[code] = { selected: true, webServices: {} };
+                            setSelectedDomainWs(code, {});
                         } else {
                             delete selectedDomainData[code];
                         }
                         renderDomainList(domainSearchEl.value);
                         updateDomainCounter();
+                        updateSummary();
                     });
                 });
 
@@ -1310,10 +1368,11 @@
                         var code = cb.getAttribute('data-domain-code');
                         if (!selectedDomainData[code]) return;
                         activeWSOf(code).forEach(function(ws) {
-                            selectedDomainData[code].webServices[ws.code] = cb.checked;
+                            selectedDomainData[code].webServices[ws.code] = cb.checked === true;
                         });
                         renderDomainList(domainSearchEl.value);
                         updateDomainCounter();
+                        updateSummary();
                     });
                 });
 
@@ -1322,18 +1381,10 @@
                         var code = cb.getAttribute('data-domain-code');
                         var wsCode = cb.getAttribute('data-ws-code');
                         if (!selectedDomainData[code]) return;
-                        selectedDomainData[code].webServices[wsCode] = cb.checked;
-                        var selAll = domainsListEl.querySelector(
-                            '.ws-select-all[data-domain-code="' + code + '"]');
-                        if (selAll) {
-                            var active = activeWSOf(code);
-                            var checkedCount = active.filter(function(ws) {
-                                return selectedDomainData[code].webServices[ws.code] === true;
-                            }).length;
-                            selAll.checked = active.length > 0 && checkedCount === active.length;
-                            selAll.indeterminate = checkedCount > 0 && checkedCount < active.length;
-                        }
+                        selectedDomainData[code].webServices[wsCode] = cb.checked === true;
+                        renderDomainList(domainSearchEl.value);
                         updateDomainCounter();
+                        updateSummary();
                     });
                 });
 
@@ -1342,25 +1393,147 @@
                 });
             }
 
-            function updateDomainCounter() {
-                var n = Object.keys(selectedDomainData).length;
-                domainsCounter.textContent = n + ' sélectionné' + (n > 1 ? 's' : '') + ' sur ' + domains.length;
+            // ── Web Service state (single source of truth: `selectedDomainData`) ──
+            function selectedWsState(code) {
+                var entry = selectedDomainData[code];
+                return (entry && entry.webServices) || {};
             }
 
-            selectAllBtn.addEventListener('click', function() {
+            // The enabled domain grants, without the internal `__scope` marker.
+            function getSelectedDomainCodes() {
+                return Object.keys(selectedDomainData).filter(function(code) {
+                    return code !== '__scope';
+                });
+            }
+
+            function countSelectedWs(code) {
+                return activeWSOf(code).filter(function(ws) {
+                    return selectedWsState(code)[ws.code] === true;
+                }).length;
+            }
+
+            function setSelectedDomainWs(code, map) {
+                selectedDomainData[code] = { selected: true, webServices: map || {} };
+            }
+
+            function allActiveWsCount() {
+                var n = 0;
+                domains.forEach(function(d) { n += activeWSOf(d.code).length; });
+                return n;
+            }
+
+            // Services the modal writes to the API. Inactive services are never
+            // sent: their rows are preserved so a permission becomes effective
+            // again the moment the service is reactivated.
+            function wsPatchPlan() {
+                var plan = [];
+                var seen = {};
+                getSelectedDomainCodes().forEach(function(code) {
+                    activeWSOf(code).forEach(function(ws) {
+                        if (seen[ws.code]) return;
+                        seen[ws.code] = true;
+                        plan.push({
+                            code: ws.code,
+                            enabled: selectedWsState(code)[ws.code] === true
+                        });
+                    });
+                });
+                return plan;
+            }
+
+            function clearSelection() {
+                selectedDomainData = {};
+            }
+
+            function fillAllDomainsAndServices() {
                 domains.forEach(function(d) {
                     var state = {};
                     activeWSOf(d.code).forEach(function(w) { state[w.code] = true; });
-                    selectedDomainData[d.code] = { selected: true, webServices: state };
+                    setSelectedDomainWs(d.code, state);
                 });
+            }
+
+            // The modal's state is rebuilt from the backend only: the enabled
+            // domain grants define which domains are in scope, the per-service
+            // rows define which Web Services are enabled. The counter, the
+            // "Tous les Web Services" control and the checkboxes all read from
+            // this single map.
+            function buildEditState(scopeData) {
+                selectedDomainData = {};
+                var scope = scopeData.access_scope === 'all' ? 'all' : 'selected';
+
+                if (scope === 'all') {
+                    selectedDomainData.__scope = 'all';
+                    return selectedDomainData;
+                }
+
+                var row = {};
+                (scopeData.web_services || []).forEach(function(w) {
+                    row[w.code] = w;
+                });
+
+                if (Array.isArray(scopeData.domains)) {
+                    scopeData.domains.forEach(function(domain) {
+                        if (!domain || domain.is_enabled !== true) return;
+                        var dom = domains.find(function(d) { return d.code === domain.code; });
+                        if (!dom) return;
+
+                        var state = {};
+                        (dom.web_services || []).forEach(function(ws) {
+                            state[ws.code] = !!(row[ws.code] && row[ws.code].is_enabled === true);
+                        });
+
+                        setSelectedDomainWs(domain.code, state);
+                    });
+                }
+
+                // If the user has enabled web service rows but no domain grants,
+                // build domain entries from the catalog so the services are visible.
+                if (!Object.keys(selectedDomainData).filter(function(k) { return k !== '__scope'; }).length) {
+                    var enabledCodes = Object.keys(row).filter(function(code) {
+                        return row[code] && row[code].is_enabled === true;
+                    });
+                    if (enabledCodes.length) {
+                        domains.forEach(function(d) {
+                            var domServices = d.web_services || [];
+                            var matched = domServices.filter(function(ws) {
+                                return enabledCodes.indexOf(ws.code) !== -1;
+                            });
+                            if (!matched.length) return;
+                            var state = {};
+                            domServices.forEach(function(ws) {
+                                state[ws.code] = enabledCodes.indexOf(ws.code) !== -1;
+                            });
+                            setSelectedDomainWs(d.code, state);
+                        });
+                    }
+                }
+
+                selectedDomainData.__scope = 'selected';
+                return selectedDomainData;
+            }
+
+            function updateDomainCounter() {
+                var n = getSelectedDomainCodes().length;
+                domainsCounter.textContent = n + ' sélectionné' + (n > 1 ? 's' : '') + ' sur ' + domains.length;
+            }
+
+            function updateSummary() {
+                buildSummary();
+            }
+
+            selectAllBtn.addEventListener('click', function() {
+                fillAllDomainsAndServices();
                 renderDomainList(domainSearchEl.value);
                 updateDomainCounter();
+                updateSummary();
             });
 
             deselectAllBtn.addEventListener('click', function() {
-                selectedDomainData = {};
+                clearSelection();
                 renderDomainList(domainSearchEl.value);
                 updateDomainCounter();
+                updateSummary();
             });
 
             domainSearchEl.addEventListener('input', function() {
@@ -1370,24 +1543,32 @@
             function buildSummary() {
                 var items = [];
                 var role = document.getElementById('nu-role').value;
-                items.push('Rôle : ' + (role === 'admin' ? 'Administrateur' : 'Utilisateur'));
-                items.push('Statut : ' + (activeCb.checked ? 'Actif' : 'Désactivé'));
                 var scope = currentScope();
-                if (scope === 'all') {
-                    items.push('Portée d\'accès : tous les domaines (y compris futurs)');
-                } else {
-                    var n = Object.keys(selectedDomainData).length;
-                    items.push('Portée d\'accès : ' + n + ' domaine(s) sélectionné(s)');
-                    Object.keys(selectedDomainData).forEach(function(code) {
-                        var domainData = selectedDomainData[code];
+                var active = allActiveWsCount();
+                items.push('Portée d\'accès : ' + (scope === 'all' ?
+                    'tous les domaines (y compris futurs) — ' + active + ' Web Service' +
+                    (active > 1 ? 's' : '') + ' actif' + (active > 1 ? 's' : '') +
+                    ' actuellement' :
+                    'domaines sélectionnés ci-dessous'));
+                if (scope !== 'all') {
+                    getSelectedDomainCodes().forEach(function(code) {
                         var domain = domains.find(function(d) { return d.code === code; });
                         var domainName = domain ? domain.name : code;
-                        var wsCount = Object.keys(domainData.webServices || {}).length;
-                        if (wsCount > 0) {
-                            items.push('  • ' + domainName + ' : ' + wsCount + ' service(s) web');
-                        }
+                        var wsCount = countSelectedWs(code);
+                        var total = activeWSOf(code).length;
+                        items.push('  • ' + domainName + ' : ' + wsCount + ' / ' + total +
+                            ' Web Service' + (total > 1 ? 's' : '') + ' sélectionné' + (wsCount > 1 ? 's' : ''));
                     });
                 }
+                var totalSelected = 0;
+                getSelectedDomainCodes().forEach(function(code) {
+                    totalSelected += countSelectedWs(code);
+                });
+                items.push('Rôle : ' + (role === 'admin' ? 'Administrateur' : 'Utilisateur'));
+                items.push('Statut : ' + (activeCb.checked ? 'Actif' : 'Désactivé'));
+                items.push('Accès au total : ' + (scope === 'all' ? active : totalSelected) + ' / ' + active +
+                    ' Web Service' + (active > 1 ? 's' : '') + ' actif' + (active > 1 ? 's' : ''));
+                summaryBox.classList.toggle('d-none', scope !== 'selected');
                 summaryList.innerHTML = items.map(function(s) {
                     return '<li class="mb-1">' + esc(s) + '</li>';
                 }).join('');
@@ -1411,19 +1592,21 @@
                     setFieldError('email', 'Format d\'email invalide.');
                     ok = false;
                 }
-                if (!password) {
+                if (password) {
+                    if (password.length < 8) {
+                        setFieldError('password', 'Au moins 8 caractères requis.');
+                        ok = false;
+                    }
+                    if (password !== pwdConfirm.value) {
+                        setFieldError('password-confirm', 'Les mots de passe ne correspondent pas.');
+                        ok = false;
+                    }
+                } else if (!isEditMode) {
                     setFieldError('password', 'Le mot de passe est requis.');
-                    ok = false;
-                } else if (password.length < 8) {
-                    setFieldError('password', 'Au moins 8 caractères requis.');
-                    ok = false;
-                }
-                if (password !== pwdConfirm.value) {
-                    setFieldError('password-confirm', 'Les mots de passe ne correspondent pas.');
                     ok = false;
                 }
 
-                if (ok && currentScope() === 'selected' && !Object.keys(selectedDomainData).length) {
+                if (ok && currentScope() === 'selected' && !getSelectedDomainCodes().length) {
                     formError.textContent = 'Sélectionnez au moins un domaine ou passez en « Tous les domaines ».';
                     formError.classList.remove('d-none');
                     ok = false;
@@ -1463,444 +1646,216 @@
                     var payload = {
                         name: document.getElementById('nu-name').value.trim(),
                         email: document.getElementById('nu-email').value.trim(),
-                        password: pwdInput.value,
                         role: document.getElementById('nu-role').value,
-                        is_active: activeCb.checked === true
+                        is_active: activeCb.checked === true,
+                        access_scope: currentScope()
                     };
+                    if (pwdInput.value) {
+                        payload.password = pwdInput.value;
+                    } else if (!isEditMode) {
+                        payload.password = pwdInput.value;
+                    }
 
                     submitting = true;
                     submitBtn.disabled = true;
                     submitSpinner.classList.remove('d-none');
-                    submitText.textContent = 'Création...';
+                    submitText.textContent = isEditMode ? 'Modification...' : 'Création...';
 
                     var client = api();
                     if (!client) {
                         submitting = false;
                         submitBtn.disabled = false;
                         submitSpinner.classList.add('d-none');
-                        submitText.textContent = "Créer l'utilisateur";
+                        submitText.textContent = isEditMode ? "Enregistrer les modifications" : "Créer l'utilisateur";
                         formError.textContent = 'Client API introuvable.';
                         formError.classList.remove('d-none');
                         return;
                     }
 
-                    client.post('/admin/users', payload)
-                        .then(function(res) {
-                            var body = res && res.data;
-                            var created = body && body.data;
-                            var newId = created && created.id;
-                            var selectedCodes = Object.keys(selectedDomainData);
-                            var wsSteps = [];
-                            Object.keys(selectedDomainData).forEach(function(code) {
-                                var ws = selectedDomainData[code].webServices || {};
-                                Object.keys(ws).forEach(function(wCode) {
-                                    wsSteps.push(client.patch(
-                                        '/admin/users/' + newId + '/web-services/' +
-                                        encodeURIComponent(wCode),
-                                        { is_enabled: ws[wCode] === true }
-                                    ));
-                                });
-                            });
-                            var steps = [];
-                            if (newId && selectedCodes.length) {
-                                steps.push(client.put('/admin/users/' + newId + '/domains', {
-                                    domains: selectedCodes
-                                }));
-                            }
-                            if (newId && wsSteps.length) {
-                                steps.push(Promise.all(wsSteps));
-                            }
-                            if (newId && steps.length) {
-                                return steps.reduce(function(chain, p) {
-                                    return chain.then(function() { return p; });
-                                }, Promise.resolve()).then(function() {
-                                    return newId;
-                                });
-                            }
-                            return newId;
-                        })
-                        .then(function() {
-                            submitting = false;
-                            submitBtn.disabled = false;
-                            submitSpinner.classList.add('d-none');
-                            submitText.textContent = "Créer l'utilisateur";
-                            closeModal();
-                            showToast('Utilisateur créé avec succès.');
-                            loadUsers();
-                        })
-                        .catch(function(err) {
-                            submitting = false;
-                            submitBtn.disabled = false;
-                            submitSpinner.classList.add('d-none');
-                            submitText.textContent = "Créer l'utilisateur";
-                            var status = err.status || (err.response ? err.response.status : null);
-                            if (status === 401) {
-                                localStorage.removeItem('anapec_token');
-                                localStorage.removeItem('anapec_user');
-                                window.location.href = '/login';
-                                return;
-                            }
-                            if (status === 403) {
-                                formError.textContent = 'Accès non autorisé.';
-                                formError.classList.remove('d-none');
-                                return;
-                            }
-                            var body = err.body || (err.response ? err.response.data : null);
-                            if (status === 422 && body && body.errors) {
-                                var has = false;
-                                var map = {
-                                    'name': 'name',
-                                    'email': 'email',
-                                    'role': 'role',
-                                    'password': 'password',
-                                    'is_active': 'is_active'
-                                };
-                                Object.keys(body.errors).forEach(function(field) {
-                                    if (map[field]) {
-                                        setFieldError(map[field], Array.isArray(body.errors[
-                                            field]) ? body.errors[field][0] : String(body
-                                            .errors[field]));
-                                        has = true;
-                                    }
-                                });
-                                if (has) {
-                                    formError.classList.add('d-none');
-                                    return;
-                                }
-                                formError.textContent = body.message || "L'email est déjà utilisé.";
-                                formError.classList.remove('d-none');
-                                return;
-                            }
-                            formError.textContent = (body && body.message) ? body.message :
-                                "Impossible de créer l'utilisateur.";
-                            formError.classList.remove('d-none');
+                    var apiCall = isEditMode
+                        ? client.put('/admin/users/' + editingUserId, payload)
+                        : client.post('/admin/users', payload);
+
+                    apiCall.then(function(res) {
+                        var body = res && res.data;
+                        var created = body && body.data;
+                        var targetId = isEditMode ? editingUserId : (created && created.id);
+                        var scope = payload.access_scope;
+
+                        if (!targetId || scope === 'all') {
+                            return res;
+                        }
+
+                        var plan = wsPatchPlan();
+                        var selectedCodes = getSelectedDomainCodes();
+                        var wsSteps = [];
+                        plan.forEach(function(item) {
+                            wsSteps.push(client.patch(
+                                '/admin/users/' + targetId + '/web-services/' +
+                                encodeURIComponent(item.code),
+                                { is_enabled: item.enabled === true }
+                            ));
                         });
+
+                        var steps = [];
+                        if (selectedCodes.length) {
+                            steps.push(client.put('/admin/users/' + targetId + '/domains', {
+                                domains: selectedCodes
+                            }));
+                        }
+                        if (wsSteps.length) {
+                            steps.push(Promise.all(wsSteps));
+                        }
+                        if (steps.length) {
+                            return steps.reduce(function(chain, p) {
+                                return chain.then(function() { return p; });
+                            }, Promise.resolve()).then(function() {
+                                return res;
+                            });
+                        }
+                        return res;
+                    })
+                    .then(function() {
+                        submitting = false;
+                        submitBtn.disabled = false;
+                        submitSpinner.classList.add('d-none');
+                        submitText.textContent = isEditMode ? "Enregistrer les modifications" : "Créer l'utilisateur";
+                        closeModal();
+                        showToast(isEditMode ? 'Utilisateur modifié avec succès.' : 'Utilisateur créé avec succès.');
+                        loadUsers();
+                    })
+                    .catch(function(err) {
+                        submitting = false;
+                        submitBtn.disabled = false;
+                        submitSpinner.classList.add('d-none');
+                        submitText.textContent = isEditMode ? "Enregistrer les modifications" : "Créer l'utilisateur";
+                        var status = err.status || (err.response ? err.response.status : null);
+                        if (status === 401) {
+                            localStorage.removeItem('anapec_token');
+                            localStorage.removeItem('anapec_user');
+                            window.location.href = '/login';
+                            return;
+                        }
+                        if (status === 403) {
+                            formError.textContent = 'Accès non autorisé.';
+                            formError.classList.remove('d-none');
+                            return;
+                        }
+                        var body = err.body || (err.response ? err.response.data : null);
+                        if (status === 422 && body && body.errors) {
+                            var has = false;
+                            var map = {
+                                'name': 'name',
+                                'email': 'email',
+                                'role': 'role',
+                                'password': 'password',
+                                'is_active': 'is_active'
+                            };
+                            Object.keys(body.errors).forEach(function(field) {
+                                if (map[field]) {
+                                    setFieldError(map[field], Array.isArray(body.errors[field]) ? body.errors[field][0] : String(body.errors[field]));
+                                    has = true;
+                                }
+                            });
+                            if (has) {
+                                formError.classList.add('d-none');
+                                return;
+                            }
+                            formError.textContent = body.message || "L'email est déjà utilisé.";
+                            formError.classList.remove('d-none');
+                            return;
+                        }
+                        formError.textContent = (body && body.message) ? body.message :
+                            (isEditMode ? "Impossible de modifier l'utilisateur." : "Impossible de créer l'utilisateur.");
+                        formError.classList.remove('d-none');
+                    });
                 });
             }
-            // ── EDIT USER MODAL ──────────────────────────────────────────────────────
-            var formErrorEdit = document.getElementById('form-error-edit');
-            var successToastEdit = document.getElementById('success-toast-edit');
-            var submitBtnEdit = document.getElementById('btn-edit-user');
-            var submitTextEdit = document.getElementById('btn-edit-user-text');
-            var submitSpinnerEdit = document.getElementById('btn-edit-user-spinner');
-            var editForm = document.getElementById('user-edit-form');
-            var userIdToEdit = null;
-
+            // ── EDIT USER MODAL (uses the shared form in EDIT mode) ──
             function openEditModal(id, name, email, role, is_active) {
-                userIdToEdit = id;
+                lastFocused = document.activeElement;
+                createForm.reset();
+                clearFieldErrors();
+                setModalMode('edit');
+                editingUserId = id;
 
                 document.getElementById('nu-name').value = name || '';
                 document.getElementById('nu-email').value = email || '';
                 document.getElementById('nu-role').value = role || 'user';
+                activeCb.checked = is_active === true;
+                activeLabel.textContent = is_active === true ? 'Actif' : 'Désactivé';
+                pwdInput.value = '';
+                pwdConfirm.value = '';
+                pwdInput.type = 'password';
 
-                document.getElementById('nu-active').checked = is_active === true;
-                document.getElementById('nu-active-label').textContent =
-                    is_active === true ? 'Actif' : 'Désactivé';
-
-                document.getElementById('nu-password').value = '';
-                document.getElementById('nu-password-confirm').value = '';
-                formError.classList.add('d-none');
-
-                // Reset scope
-                setScopeUI(false);
+                // Reset scope before the async load
                 selectedDomainData = {};
+                setScopeRadio('all');
+                selectAllScope();
 
-                // 1. Load domains catalog (now includes web_services per domain)
-                get('/api/v1/admin/users/create-scope')
-                    .then(function(res) {
-                        if (!res.ok) {
-                            throw new Error('Impossible de charger le catalogue des domaines.');
-                        }
-                        return res.json();
-                    })
-                    .then(function(catalogData) {
-
-                        if (
-                            !catalogData ||
-                            !catalogData.success ||
-                            !Array.isArray(catalogData.data)
-                        ) {
-                            throw new Error('Catalogue des domaines invalide.');
-                        }
-
-                        domains = catalogData.data;
-
-                        // 2. Load current user's scope
-                        return get('/api/v1/admin/users/' + id + '/domains')
-                            .then(function(res) {
-                                if (!res.ok) {
-                                    throw new Error('Impossible de charger les accès utilisateur.');
-                                }
-                                return res.json();
-                            })
-                            .then(function(scopeData) {
-
-                                if (!scopeData || !scopeData.success || !scopeData.data) {
-                                    throw new Error('Scope utilisateur invalide.');
-                                }
-
-                                var scope = scopeData.data;
-                                selectedDomainData = {};
-
-                                if (Array.isArray(scope.domains)) {
-                                    scope.domains.forEach(function(domain) {
-                                        if (domain.is_enabled !== true) return;
-                                        selectedDomainData[domain.code] = {
-                                            selected: true,
-                                            webServices: {}
-                                        };
-                                    });
-                                }
-
-                                // Build WS state for each selected domain
-                                Object.keys(selectedDomainData).forEach(function(code) {
-                                    var dom = domains.find(function(d) { return d.code === code; });
-                                    if (!dom) return;
-                                    var domWS = dom.web_services || [];
-                                    var state = {};
-                                    domWS.forEach(function(ws) {
-                                        var eff = (scope.web_services || []).some(function(w) {
-                                            return w.code === ws.code
-                                                && w.effective_access === true;
-                                        });
-                                        state[ws.code] = eff && ws.is_active === true;
-                                    });
-                                    selectedDomainData[code].webServices = state;
-                                });
-
-                                // If user has explicit domains -> selected
-                                // Otherwise -> all domains
-                                var hasSelectedDomains =
-                                    Object.keys(selectedDomainData).length > 0;
-
-                                setScopeUI(hasSelectedDomains);
-                                renderDomainList('');
-                                updateDomainCounter();
-                            });
-                    })
-                    .catch(function(err) {
-                        console.error('Erreur ouverture édition utilisateur:', err);
-
-                        formErrorEdit.textContent =
-                            err.message || 'Impossible de charger les accès utilisateur.';
-
-                        formErrorEdit.classList.remove('d-none');
-                    });
+                loadCatalog(function() {
+                    get('/api/v1/admin/users/' + id + '/domains')
+                        .then(function(res) {
+                            if (!res.ok) {
+                                throw new Error('Impossible de charger les accès utilisateur.');
+                            }
+                            return res.json();
+                        })
+                        .then(function(scopeData) {
+                            if (!scopeData || !scopeData.success || !scopeData.data) {
+                                throw new Error('Scope utilisateur invalide.');
+                            }
+                            buildEditState(scopeData.data);
+                            var scope = selectedDomainData.__scope || 'selected';
+                            applyScopeValue(scope);
+                            delete selectedDomainData.__scope;
+                            renderDomainList('');
+                            updateDomainCounter();
+                            updateSummary();
+                        })
+                        .catch(function(err) {
+                            console.error('Erreur ouverture édition utilisateur:', err);
+                            formError.textContent = err.message || 'Impossible de charger les accès utilisateur.';
+                            formError.classList.remove('d-none');
+                        });
+                });
 
                 createModal.show();
                 document.body.style.overflow = 'hidden';
-
                 document.getElementById('nu-name').focus();
-            }
-
-            function closeEditModal() {
-                createModal.hide();
-                document.body.style.overflow = '';
-                if (lastFocused && lastFocused.focus) lastFocused.focus();
-                resetEditForm();
-            }
-
-            function resetEditForm() {
-                editForm.reset();
-                formError.classList.add('d-none');
-                userIdToEdit = null;
-            }
-
-            function showSuccessEdit(msg) {
-                if (successToastEdit) {
-                    successToastEdit.textContent = msg || 'Utilisateur modifié avec succès.';
-                    successToastEdit.classList.remove('d-none');
-                    setTimeout(function() {
-                        successToastEdit.classList.add('d-none');
-                    }, 4000);
-                }
-            }
-
-            if (editForm) {
-                editForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    if (submitting) return;
-
-                    var name = document.getElementById('nu-name').value.trim();
-                    var email = document.getElementById('nu-email').value.trim();
-
-                    if (!name) {
-                        setFieldError('name', 'Le nom est requis.');
-                        return;
-                    }
-                    if (!email) {
-                        setFieldError('email', "L'email est requis.");
-                        return;
-                    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                        setFieldError('email', 'Format d\'email invalide.');
-                        return;
-                    }
-
-                    submitting = true;
-                    submitBtnEdit.disabled = true;
-                    submitSpinnerEdit.classList.remove('d-none');
-                    submitTextEdit.textContent = 'Modification...';
-
-                    var payload = {
-                        name: name,
-                        email: email,
-                        role: document.getElementById('nu-role').value,
-                        is_active: document.getElementById('nu-active').checked === true
-                    };
-
-                    var client = api();
-                    if (!client) {
-                        submitting = false;
-                        submitBtnEdit.disabled = false;
-                        submitSpinnerEdit.classList.add('d-none');
-                        submitTextEdit.textContent = "Modifier l'utilisateur";
-                        formErrorEdit.textContent = 'Client API introuvable.';
-                        formErrorEdit.classList.remove('d-none');
-                        return;
-                    }
-
-                    client.put('/admin/users/' + userIdToEdit, payload)
-                        .then(function(res) {
-                            var selectedCodes = Object.keys(selectedDomainData);
-                            var wsSteps = [];
-                            Object.keys(selectedDomainData).forEach(function(code) {
-                                var ws = selectedDomainData[code].webServices || {};
-                                Object.keys(ws).forEach(function(wCode) {
-                                    wsSteps.push(client.patch(
-                                        '/admin/users/' + userIdToEdit + '/web-services/' +
-                                        encodeURIComponent(wCode),
-                                        { is_enabled: ws[wCode] === true }
-                                    ));
-                                });
-                            });
-                            var steps = [];
-                            if (selectedCodes.length) {
-                                steps.push(client.put('/admin/users/' + userIdToEdit + '/domains', {
-                                    domains: selectedCodes
-                                }));
-                            }
-                            if (wsSteps.length) {
-                                steps.push(Promise.all(wsSteps));
-                            }
-                            if (!steps.length) return res;
-                            return steps.reduce(function(chain, p) {
-                                return chain.then(function() { return p; });
-                            }, Promise.resolve()).then(function() { return res; });
-                        })
-                        .then(function(res) {
-                            submitting = false;
-                            submitBtnEdit.disabled = false;
-                            submitSpinnerEdit.classList.add('d-none');
-                            submitTextEdit.textContent = "Modifier l'utilisateur";
-                            closeEditModal();
-                            showSuccessEdit('Utilisateur modifié avec succès.');
-                            loadUsers();
-                        })
-                        .catch(function(err) {
-                            submitting = false;
-                            submitBtnEdit.disabled = false;
-                            submitSpinnerEdit.classList.add('d-none');
-                            submitTextEdit.textContent = "Modifier l'utilisateur";
-                            var status = err.status || (err.response ? err.response.status : null);
-                            var body = err.body || (err.response ? err.response.data : null);
-                            if (status === 403) {
-                                formErrorEdit.textContent = 'Accès non autorisé.';
-                                formErrorEdit.classList.remove('d-none');
-                                return;
-                            }
-                            if (status === 422 && body && body.errors) {
-                                var has = false;
-                                var map = {
-                                    'name': 'name',
-                                    'email': 'email',
-                                    'role': 'role',
-                                    'is_active': 'is_active'
-                                };
-                                Object.keys(body.errors).forEach(function(field) {
-                                    if (map[field]) {
-                                        setFieldError(map[field], Array.isArray(body.errors[
-                                            field]) ? body.errors[field][0] : String(body
-                                            .errors[field]));
-                                        has = true;
-                                    }
-                                });
-                                if (has) {
-                                    formErrorEdit.classList.add('d-none');
-                                    return;
-                                }
-                                formErrorEdit.textContent = body.message || "Erreur de validation.";
-                                formErrorEdit.classList.remove('d-none');
-                                return;
-                            }
-                            formErrorEdit.textContent = (body && body.message) ? body.message :
-                                "Impossible de modifier l'utilisateur.";
-                            formErrorEdit.classList.remove('d-none');
-                        });
-                });
             }
 
             function initEditActionButtons() {
                 document.querySelectorAll('[data-edit-user]').forEach(function(btn) {
                     btn.addEventListener('click', function() {
-
                         var id = btn.getAttribute('data-edit-user');
-
                         var client = api();
-
                         if (!client) {
                             showToast('Client API introuvable.', 'error');
                             return;
                         }
-
                         client.get('/admin/users/' + id)
                             .then(function(res) {
-
                                 if (!res || res.status < 200 || res.status >= 300) {
-                                    throw new Error('Impossible de charger l\'utilisateur.');
+                                    throw new Error("Impossible de charger l'utilisateur.");
                                 }
-
                                 return res.data;
                             })
                             .then(function(data) {
-
                                 if (!data || !data.success || !data.data) {
                                     throw new Error('Données utilisateur invalides.');
                                 }
-
                                 var u = data.data;
-
-                                openEditModal(
-                                    u.id,
-                                    u.name,
-                                    u.email,
-                                    u.role,
-                                    u.is_active
-                                );
+                                openEditModal(u.id, u.name, u.email, u.role, u.is_active);
                             })
                             .catch(function(err) {
-
                                 console.error('Erreur Modifier utilisateur:', err);
-
-                                showToast(
-                                    err.message || 'Erreur lors de la récupération des données.',
-                                    'error'
-                                );
+                                showToast(err.message || 'Erreur lors de la récupération des données.', 'error');
                             });
                     });
                 });
             }
 
-            if (btnNew) btnNew.addEventListener('click', openModal);
-            if (modalClose) modalClose.addEventListener('click', closeModal);
-            if (modalCancel) modalCancel.addEventListener('click', closeModal);
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && !modal.classList.contains('d-none')) {
-                    closeModal();
-                    if (btnNew) btnNew.focus();
-                }
-            });
-
-            // Initialize edit modals for action buttons
             initEditActionButtons();
 
         })();
