@@ -36,8 +36,8 @@ class WebServiceManagementUiTest extends TestCase
         $this->actingAs($admin, 'api')
             ->getJson('/api/v1/admin/web-services')
             ->assertOk()
-            ->assertJsonCount(5, 'data')
-            ->assertJsonPath('data.0.code', 'WS_BILAN');
+            ->assertJsonCount(6, 'data')
+            ->assertJsonPath('data.0.code', 'WS_ACTUALISATION');
     }
 
     // A regular user must be denied access to the admin listing endpoint.

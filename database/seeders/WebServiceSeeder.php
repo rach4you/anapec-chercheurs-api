@@ -38,6 +38,11 @@ class WebServiceSeeder extends Seeder
                 'name' => 'Researcher Registration',
                 'description' => 'Fully register a researcher together with diplomas, experiences, languages, permis, mobilites, bureautiques and jobs.',
             ],
+            [
+                'code' => 'WS_ACTUALISATION',
+                'name' => 'Researcher Actualisation',
+                'description' => 'Update an existing researcher together with diplomas, experiences, languages, permis, mobilites, bureautiques and jobs.',
+            ],
         ];
 
         foreach ($services as $service) {

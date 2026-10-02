@@ -53,7 +53,7 @@ class WebServiceManagementTest extends TestCase
         $this->actingAs($admin, 'api')
             ->getJson('/api/v1/admin/web-services')
             ->assertOk()
-            ->assertJsonCount(5, 'data');
+            ->assertJsonCount(6, 'data');
     }
 
     // --- 2. ADMIN can view a Web Service ---

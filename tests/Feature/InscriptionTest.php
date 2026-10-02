@@ -26,16 +26,22 @@ class InscriptionTest extends TestCase
         $this->seed(WebServiceSeeder::class);
     }
 
-    private function userWithInscriptionPermission(): User
+    private function userWithInscriptionPermission(?string $email = null, bool $enabled = true, bool $active = true): User
     {
-        $user = UserFactory::new()->create([
-            'email' => fake()->unique()->safeEmail(),
+        $factory = UserFactory::new();
+
+        if (! $active) {
+            $factory->asInactive();
+        }
+
+        $user = $factory->create([
+            'email' => $email ?? fake()->unique()->safeEmail(),
             'password' => 'secret123',
-            'is_active' => true,
+            'is_active' => $active,
         ]);
 
         $ws = WebService::query()->where('code', 'WS_INSCRIPTION')->firstOrFail();
-        $user->webServices()->attach($ws->id, ['is_enabled' => true]);
+        $user->webServices()->attach($ws->id, ['is_enabled' => $enabled]);
 
         return $user;
     }
@@ -124,6 +130,79 @@ class InscriptionTest extends TestCase
             ],
         ];
     }
+
+    // AUTHORIZATION TESTS (mirroring CheckCinTest pattern)
+
+    // 1. Unauthenticated request → 401
+    public function test_unauthenticated_request_returns_401(): void
+    {
+        $this->postJson('/api/v1/services/inscription', [])
+            ->assertStatus(401);
+    }
+
+    // 2. Inactive user → 401
+    public function test_inactive_user_returns_401(): void
+    {
+        $user = $this->userWithInscriptionPermission('inact_inscription@example.com', true, false);
+
+        $this->assertFalse($user->fresh()->is_active);
+
+        $response = $this->actingAs($user, 'api')
+            ->postJson('/api/v1/services/inscription', ['chercheur' => ['cin' => 'TEST123']]);
+
+        $response->assertStatus(401);
+    }
+
+    // 3. User without WS_INSCRIPTION permission → 403
+    public function test_user_without_inscription_permission_returns_403(): void
+    {
+        $user = UserFactory::new()->create([
+            'email' => 'noinscriptionperm@example.com',
+            'password' => 'secret123',
+        ]);
+
+        $this->actingAs($user, 'api')
+            ->postJson('/api/v1/services/inscription', ['chercheur' => ['cin' => 'TEST123']])
+            ->assertStatus(403);
+    }
+
+    // 4. User with disabled WS_INSCRIPTION permission → 403
+    public function test_user_with_disabled_inscription_permission_returns_403(): void
+    {
+        $user = $this->userWithInscriptionPermission('disabledinscription@example.com', false);
+
+        $this->actingAs($user, 'api')
+            ->postJson('/api/v1/services/inscription', ['chercheur' => ['cin' => 'TEST123']])
+            ->assertStatus(403);
+    }
+
+    // 5. WS_INSCRIPTION globally OFF → 403
+    public function test_globally_off_inscription_returns_403(): void
+    {
+        $user = $this->userWithInscriptionPermission('globoffinscription@example.com');
+
+        $ws = WebService::query()->where('code', 'WS_INSCRIPTION')->firstOrFail();
+        $ws->update(['is_active' => false]);
+
+        $this->actingAs($user, 'api')
+            ->postJson('/api/v1/services/inscription', ['chercheur' => ['cin' => 'TEST123']])
+            ->assertStatus(403);
+    }
+
+    // 6. Valid user + permission + global ON → allowed (covered by TEST 1 below,
+    //    but we assert the route is reachable without 401/403)
+    public function test_valid_user_with_permission_and_global_on_is_allowed(): void
+    {
+        $user = $this->userWithInscriptionPermission('validinscription@example.com');
+        $data = $this->validInscriptionData();
+
+        $response = $this->actingAs($user, 'api')
+            ->postJson('/api/v1/services/inscription', $data);
+
+        $this->assertNotContains($response->status(), [401, 403]);
+    }
+
+    // BUSINESS LOGIC TESTS
 
     // TEST 1 — Complete successful inscription.
     public function test_1_inscription_complete_succeeds(): void

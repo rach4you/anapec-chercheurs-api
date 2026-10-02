@@ -59,7 +59,7 @@ class WebServiceUserOwnTest extends TestCase
 
         // The user has no permissions yet, but all registered services are listed.
         $data = $response->json('data');
-        $this->assertCount(5, $data);
+        $this->assertCount(6, $data);
         foreach ($data as $row) {
             $this->assertFalse($row['is_enabled']);
             $this->assertFalse($row['effective_access']);

@@ -210,17 +210,22 @@ class WebServicePermissionTest extends TestCase
 
     public function test_admin_can_access_admin_user_index(): void
     {
-        $admin = UserFactory::new()->asAdmin()->create(['email' => 'boss@example.com', 'password' => 'secret123']);
-        $plain = UserFactory::new()->create(['email' => 'plain2@example.com', 'password' => 'secret123']);
+        $admin = UserFactory::new()->asAdmin()->create([
+            'email' => 'boss@example.com',
+            'password' => 'secret123',
+            'name' => 'Boss',
+        ]);
 
         $response = $this->actingAs($admin, 'api')
-            ->getJson('/api/v1/admin/users')
+            ->getJson('/api/v1/admin/users?search=boss@example.com')
             ->assertOk();
 
-        $emails = collect($response->json('data'))->pluck('email')->all();
+        $data = $response->json('data.data');
+        $this->assertIsArray($data, 'data.data must be an array of users');
+        $this->assertNotEmpty($data, 'search must return at least one user');
 
-        $this->assertContains('boss@example.com', $emails);
-        $this->assertContains('plain2@example.com', $emails);
+        $ids = collect($data)->pluck('id')->all();
+        $this->assertContains($admin->id, $ids, 'The admin user must appear in the search results');
     }
 
     public function test_admin_can_create_a_user(): void

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Api\DocumentationController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Services\ActualisationController;
 use App\Http\Controllers\Services\CheckCinController;
 use App\Http\Controllers\Services\InscriptionController;
 use App\Http\Controllers\UserController;
@@ -28,6 +29,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware(['ws:WS_INSCRIPTION', 'throttle:60,1'])
             ->post('services/inscription', [InscriptionController::class, 'store']);
+
+        Route::middleware(['ws:WS_ACTUALISATION', 'throttle:60,1'])
+            ->put('services/actualisation', [ActualisationController::class, 'update']);
 
         Route::middleware(['can:admin'])->prefix('admin')->group(function (): void {
             Route::get('users', [AdminUserController::class, 'index']);

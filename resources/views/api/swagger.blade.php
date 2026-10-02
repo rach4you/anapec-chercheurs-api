@@ -151,7 +151,8 @@
         // filter below).
         var SERVICE_OPERATIONS = {
             'WS_CHECK_CIN': ['/services/check-cin'],
-            'WS_INSCRIPTION': ['/services/inscription']
+            'WS_INSCRIPTION': ['/services/inscription'],
+            'WS_ACTUALISATION': ['/services/actualisation']
         };
 
         function collectServicePaths(allowed) {

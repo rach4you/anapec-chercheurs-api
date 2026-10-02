@@ -52,7 +52,7 @@ class WebServiceDomainMembershipUiTest extends TestCase
 
         $services = $response->json('data');
         $this->assertIsArray($services);
-        $this->assertCount(5, $services);
+        $this->assertCount(6, $services);
 
         foreach ($services as $service) {
             $this->assertArrayHasKey('domains', $service, 'Every service must expose a `domains` field.');
@@ -84,7 +84,6 @@ class WebServiceDomainMembershipUiTest extends TestCase
         // Detach the service from every domain so it belongs to none.
         DomainWebService::query()
             ->where('web_service_id', $wsId)
-            ->where('domain_id', $domainId)
             ->delete();
 
         $response = $this->actingAs($this->admin(), 'api')
